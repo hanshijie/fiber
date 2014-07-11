@@ -1,9 +1,9 @@
 package fiber.test;
 
-import fiber.common.DB;
+import fiber.mapdb.Database;
 
 
-public class MirrorDB extends DB {
+public class MirrorDB extends Database {
 
 
 

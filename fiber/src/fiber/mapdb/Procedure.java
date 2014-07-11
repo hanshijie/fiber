@@ -1,5 +1,6 @@
-package fiber.common;
+package fiber.mapdb;
 
+import fiber.common.RetException;
 import fiber.io.Log;
 
 public abstract class Procedure {
@@ -61,7 +62,9 @@ public abstract class Procedure {
 		}
 	}
 	abstract protected void execute() throws Exception;
-	abstract protected void onRetError(int retcode, Object content);
+	protected void onRetError(int retcode, Object content) {
+		Log.err("[thread-%d]. onRetError. retcode:%d content:%s", Thread.currentThread().getId(), retcode, content);
+	}
 	protected void onFail() {
 		Log.err("%d. procedure:%s fail!", Thread.currentThread().getId(), this);
 	}
