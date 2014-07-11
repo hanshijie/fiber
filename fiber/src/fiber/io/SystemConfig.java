@@ -1,7 +1,7 @@
 package fiber.io;
 
 public final class SystemConfig {
-	public int logLevel = Log.LOG_TRACE;
+	public int logLevel = Log.LOG_DEBUG;
 	
 	public int lockPoolSize = 1024;
 	
