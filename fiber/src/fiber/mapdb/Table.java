@@ -10,28 +10,20 @@ public class Table {
 	public TValue get(TKey key) {
 		TValue value = map.get(key);
 		if(value == null) {
-			value = map.putIfAbsent(key, new TValue());
-		}
-		synchronized(value) {
-			if(!value.isLoaded()) {
-				value.setValue(loadValue(key));
-				value.setLoaded(true);
-			}
+			value = map.putIfAbsent(key, new TValue(loadValue(key)));
 		}
 		return value;
 	}
 	public TValue put(TKey key, TValue value) { return map.put(key, value); }
-	public TValue putIfAbsent(TKey key, TValue value) {
-		return map.putIfAbsent(key, value);
-	}
-	public boolean check(TKey key, TValue value) {
-		TValue old = map.get(key);
-		return old == value;
-	}
-	public void update(TKey key, TValue value) {
-		map.put(key, value);
-		onUpdate(key, value);
-	}
-	protected void onUpdate(TKey key, TValue value) { }
+	public TValue putIfAbsent(TKey key, TValue value) {	return map.putIfAbsent(key, value);	}
+	
+	public void onUpdate(TKey key, TValue value) { }
+	
+	/**
+	 * 删除value.isempty() 的数据.
+	 * 因为它们存在没有意义.
+	 */
+	public void shrink() { }
 	protected Bean<?> loadValue(TKey key) { return null; }
+	
 }

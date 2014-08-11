@@ -3,27 +3,15 @@ package fiber.mapdb;
 import fiber.io.Bean;
 
 public final class TValue {
-	private boolean loaded;
-	private boolean modify;
 	private Bean<?> value;
 	TValue() {
-		this.loaded = false;
-		this.modify = false;
 		this.value = null;
 	}
-	public boolean isModify() {
-		return modify;
-	}
-	public void setModify(boolean modify) {
-		this.modify = modify;
+	
+	TValue(Bean<?> value) {
+		this.value = value;
 	}
 	
-	public final boolean isLoaded() {
-		return loaded;
-	}
-	public final void setLoaded(boolean loaded) {
-		this.loaded = loaded;
-	}
 	public Bean<?> getValue() {
 		return value;
 	}
@@ -33,6 +21,6 @@ public final class TValue {
 	
 	@Override
 	public String toString() {
-		return String.format("TValue{modify=%s, value=%s}", modify, value);
+		return String.format("TValue{value=%s}", value);
 	}
 }

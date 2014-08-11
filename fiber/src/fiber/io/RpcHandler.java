@@ -22,11 +22,6 @@ public abstract class RpcHandler<A extends Bean<A>, R extends Bean<R>> extends B
 		Log.warn("bean<%s>.onTimeout unprocess!", this.getClass().getSimpleName());
 	}
 
-	
-	
-	
-	
-	
 	@SuppressWarnings("unchecked")
 	final void timeout(IOSession session, Object arg) throws Exception {
 		onTimeout(session, (A)arg);

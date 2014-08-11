@@ -6,6 +6,7 @@ import fiber.io.Bean;
 public final class TKey {
 	private final int tableid;
 	private final Bean<?> key;
+	
 	TKey(int tableid, Bean<?> key) {
 		this.tableid = tableid;
 		this.key = key;

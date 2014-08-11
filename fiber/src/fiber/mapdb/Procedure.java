@@ -4,14 +4,6 @@ import fiber.common.RetException;
 import fiber.io.Log;
 
 public abstract class Procedure {
-	public static final class  RedoException extends Exception {
-		public static final RedoException instance = new RedoException();
-		private static final long serialVersionUID = 7272522830324985095L;
-		private RedoException() {
-			super("", null, false, false);
-		}
-	}
-
 	private final int maxRedoCount;
 	public Procedure(int maxRedoCount) {
 		this.maxRedoCount = maxRedoCount;
@@ -21,11 +13,15 @@ public abstract class Procedure {
 		this(10);
 	}
 	
-	protected final void prepare() {
-		Log.info("%d. procedure:%s start.", Thread.currentThread().getId(), this);
+	/**
+	 * 设置好正确的txn上下文.
+	 */
+	protected abstract void prepare();
+	/*
+		Log.info("%s. prepare.", Thread.currentThread());
 		this.txn = Transaction.get();
 		this.txn.prepare();	
-	}
+	 */
 	
 	protected final void rollback() {
 		this.txn.rollback();
@@ -50,7 +46,7 @@ public abstract class Procedure {
 					this.commit();
 					return;
 				}
-				catch(RedoException ce) {
+				catch(ConflictException ce) {
 					this.rollback();
 				}
 			}
@@ -61,11 +57,13 @@ public abstract class Procedure {
 			this.end();
 		}
 	}
+	
 	abstract protected void execute() throws Exception;
+	
 	protected void onRetError(int retcode, Object content) {
-		Log.err("[thread-%d]. onRetError. retcode:%d content:%s", Thread.currentThread().getId(), retcode, content);
+		Log.err("%s. onRetError. retcode:%d content:%s", Thread.currentThread(), retcode, content);
 	}
 	protected void onFail() {
-		Log.err("%d. procedure:%s fail!", Thread.currentThread().getId(), this);
+		Log.err("%s. procedure:%s fail!", Thread.currentThread(), this);
 	}
 }
