@@ -1,6 +1,7 @@
 package fiber.mapdb;
 
 import java.util.HashMap;
+import java.util.Map;
 import java.util.TreeSet;
 
 import fiber.bean.BInteger;
@@ -53,6 +54,12 @@ public class Transaction {
 				Log.info("%s confliction detected!", this);
 				throw ConflictException.INSTANCE;
 			}
+		}
+		for(Map.Entry<TKey, WValue> e : this.dataMap.entrySet()) {
+			TKey key = e.getKey();
+			WValue value = e.getValue();
+			value.commit();
+			key.getTable().onUpdate(key, value.getTvalue());
 		}
 		for(WValue value : this.dataMap.values()) {
 			value.commit();
@@ -132,9 +139,10 @@ public class Transaction {
 	public static void main(String[] argv) {
 		LockPool.init(133);
 		Transaction txn = new Transaction();
+		Table table = new Table(1, 100, 1000000);
 		int N = 100;
 		for(int i = N ; i > 0 ; i--) {
-			txn.putData(new TKey(1, new BInteger(i)), new WValue(new TValue(), null, null));
+			txn.putData(new TKey(table, new BInteger(i)), new WValue(new TValue(), null, null));
 		}
 		txn.lock();
 		txn.rollback();

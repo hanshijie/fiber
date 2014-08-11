@@ -4,16 +4,20 @@ import fiber.io.Bean;
 
 
 public final class TKey {
-	private final int tableid;
+	private final Table table;
 	private final Bean<?> key;
 	
-	TKey(int tableid, Bean<?> key) {
-		this.tableid = tableid;
+	TKey(Table table, Bean<?> key) {
+		this.table = table;
 		this.key = key;
 	}
 	
 	public final int getTableid() {
-		return tableid;
+		return table.getId();
+	}
+	
+	public final Table getTable() {
+		return table;
 	}
 
 	public final Bean<?> getKey() {
@@ -24,7 +28,7 @@ public final class TKey {
 	public boolean equals(Object o) {
 		if(o instanceof TKey) {
 			TKey k = (TKey)o;
-			return this.tableid == k.tableid && this.key.equals(k.key);
+			return this.table == k.table && this.key.equals(k.key);
 		} else {
 			return false;
 		}
@@ -32,11 +36,11 @@ public final class TKey {
 	
 	@Override
 	public int hashCode() {
-		return this.tableid * 31 + key.hashCode();
+		return this.getTableid() * 31 + key.hashCode();
 	}
 	
 	@Override
 	public String toString() {
-		return String.format("TKey{tableid=%d, key=%s}", this.tableid, this.key);
+		return String.format("TKey{tableid=%d, key=%s}", this.table.getId(), this.key);
 	}
 }
