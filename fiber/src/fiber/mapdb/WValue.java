@@ -1,22 +1,20 @@
 package fiber.mapdb;
 
-import fiber.io.Bean;
-
 public final class WValue {
 	private final TValue tvalue;
-	private final Bean<?> originValue;
-	private Bean<?> curValue;
-	public WValue(TValue tv, Bean<?> ov, Bean<?> cv) {
+	private final Object originValue;
+	private Object curValue;
+	public WValue(TValue tv, Object ov, Object cv) {
 		this.tvalue = tv;
 		this.originValue = ov;
 		this.curValue = cv;
 	}
 	
-	public final Bean<?> getCurValue() {
+	public final Object getCurValue() {
 		return curValue;
 	}
 	
-	public final void setCurValue(Bean<?> curValue) {
+	public final void setCurValue(Object curValue) {
 		this.curValue = curValue;
 	}
 	
@@ -24,7 +22,7 @@ public final class WValue {
 		return tvalue;
 	}
 	
-	public final Bean<?> getOriginValue() {
+	public final Object getOriginValue() {
 		return originValue;
 	}
 	

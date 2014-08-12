@@ -1,26 +1,34 @@
 package fiber.mapdb;
 
-import fiber.io.Bean;
-
 public final class TValue {
-	private Bean<?> value;
+	private boolean shrink;
+	private Object value;
 	TValue() {
 		this.value = null;
+		this.shrink = false;
 	}
 	
-	TValue(Bean<?> value) {
+	TValue(Object value) {
 		this.value = value;
 	}
 	
-	public Bean<?> getValue() {
+	public Object getValue() {
 		return value;
 	}
-	public void setValue(Bean<?> value) {
+	public void setValue(Object value) {
 		this.value = value;
 	}
 	
+	public final boolean isShrink() {
+		return shrink;
+	}
+
+	public final void setShrink(boolean shrink) {
+		this.shrink = shrink;
+	}
+
 	@Override
 	public String toString() {
-		return String.format("TValue{value=%s}", value);
+		return String.format("TValue{shrink=%s, value=%s}", shrink, value);
 	}
 }

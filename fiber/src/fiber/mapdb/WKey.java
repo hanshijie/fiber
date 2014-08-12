@@ -1,13 +1,11 @@
 package fiber.mapdb;
 
-import fiber.io.Bean;
 
-
-public final class TKey {
+public final class WKey {
 	private final Table table;
-	private final Bean<?> key;
+	private final Object key;
 	
-	TKey(Table table, Bean<?> key) {
+	WKey(Table table, Object key) {
 		this.table = table;
 		this.key = key;
 	}
@@ -20,14 +18,14 @@ public final class TKey {
 		return table;
 	}
 
-	public final Bean<?> getKey() {
+	public final Object getKey() {
 		return key;
 	}
 
 	@Override
 	public boolean equals(Object o) {
-		if(o instanceof TKey) {
-			TKey k = (TKey)o;
+		if(o instanceof WKey) {
+			WKey k = (WKey)o;
 			return this.table == k.table && this.key.equals(k.key);
 		} else {
 			return false;
@@ -41,6 +39,6 @@ public final class TKey {
 	
 	@Override
 	public String toString() {
-		return String.format("TKey{tableid=%d, key=%s}", this.table.getId(), this.key);
+		return String.format("WKey{tableid=%d, key=%s}", this.table.getId(), this.key);
 	}
 }

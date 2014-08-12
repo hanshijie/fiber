@@ -3,30 +3,15 @@ package fiber.mapdb;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeSet;
-
-import fiber.bean.BInteger;
 import fiber.common.LockPool;
 import fiber.io.Log;
 
 public class Transaction {
-	/*
-	private final static ThreadLocal<Transaction> contexts = new ThreadLocal<Transaction>() {
-		@Override
-		public Transaction initialValue() {
-			return new Transaction();
-		}
-	};
-	
-	
-	public static Transaction get() {
-		return contexts.get();
-	}
-	*/
-	private final HashMap<TKey, WValue> dataMap;
+	private final HashMap<WKey, WValue> dataMap;
 	private final TxnLogger logger;	
 	private final TreeSet<Integer> lockSet;
 	public Transaction() {
-		this.dataMap = new HashMap<TKey, WValue>();
+		this.dataMap = new HashMap<WKey, WValue>();
 		this.logger = new TxnLogger();
 		this.lockSet = new TreeSet<Integer>();
 	}
@@ -48,15 +33,15 @@ public class Transaction {
 		Log.info("%s commit. start.", this);
 		this.lock();
 		for(WValue value : this.dataMap.values()) {
-			if(value.isConflict()) {
+			if(value.isConflict() || value.getTvalue().isShrink()) {
 				// 一般来说,检查到冲突后会redo,出于优化考虑
 				// 不释放锁.
 				Log.info("%s confliction detected!", this);
 				throw ConflictException.INSTANCE;
 			}
 		}
-		for(Map.Entry<TKey, WValue> e : this.dataMap.entrySet()) {
-			TKey key = e.getKey();
+		for(Map.Entry<WKey, WValue> e : this.dataMap.entrySet()) {
+			WKey key = e.getKey();
 			WValue value = e.getValue();
 			value.commit();
 			key.getTable().onUpdate(key, value.getTvalue());
@@ -85,15 +70,15 @@ public class Transaction {
 		Log.info("%s end", this);
 	}
 	
-	public final WValue getData(TKey key) {
+	public final WValue getData(WKey key) {
 		return this.dataMap.get(key);
 	}
 	
-	public final void putData(TKey key, WValue value) {
+	public final void putData(WKey key, WValue value) {
 		this.dataMap.put(key, value);
 	}
 	
-	public final HashMap<TKey, WValue> getDataMap() {
+	public final HashMap<WKey, WValue> getDataMap() {
 		return this.dataMap;
 	}
 	
@@ -106,13 +91,13 @@ public class Transaction {
 	public void lock() {
 		LockPool lp = LockPool.getInstance();
 		if(this.lockSet.isEmpty()) {
-			for(TKey key : this.dataMap.keySet()) {
+			for(WKey key : this.dataMap.keySet()) {
 				int lockid = lp.lockid(key.hashCode());
 				this.lockSet.add(lockid);
 			}
 			doLock();
 		} else {
-			for(TKey key : this.dataMap.keySet()) {
+			for(WKey key : this.dataMap.keySet()) {
 				int lockid = lp.lockid(key.hashCode());
 				if(!this.lockSet.contains(lockid)) {
 					unlock();
@@ -137,15 +122,18 @@ public class Transaction {
 	}
 	
 	public static void main(String[] argv) {
+		/*
 		LockPool.init(133);
 		Transaction txn = new Transaction();
-		Table table = new Table(1, 100, 1000000);
+		Table table = new Table(1, 100, 1000000) ;
 		int N = 100;
 		for(int i = N ; i > 0 ; i--) {
-			txn.putData(new TKey(table, new BInteger(i)), new WValue(new TValue(), null, null));
+			txn.putData(new WKey(table, new BInteger(i)), new WValue(new TValue(), null, null));
 		}
 		txn.lock();
 		txn.rollback();
 		txn.unlock();
+		*/
+		
 	}
 }

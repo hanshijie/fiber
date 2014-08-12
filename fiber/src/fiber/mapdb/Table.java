@@ -1,38 +1,50 @@
 package fiber.mapdb;
 
-import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
-import fiber.io.Bean;
+import fiber.io.MarshalException;
+import fiber.io.OctetsStream;
 
-public class Table {
-	private final ConcurrentLinkedHashMap<TKey, TValue> map;
+public abstract class Table {
+	private final ConcurrentHashMap<Object, TValue> map;
 	private final int id;
-	public Table(int id, int initsize, int maxsize) {
+	public Table(int id) {
 		this.id = id;
-		this.map = new ConcurrentLinkedHashMap.Builder<TKey, TValue>().
-				initialCapacity(initsize).maximumWeightedCapacity(maxsize).
-				concurrencyLevel(Runtime.getRuntime().availableProcessors()).build();
+		this.map = new ConcurrentHashMap<Object, TValue>();
 	}
 	
 	public final int getId() { return id; }
+	public final int size() { return map.size(); }
 	
-	public TValue get(TKey key) {
+	public TValue get(Object key) {
 		TValue value = map.get(key);
 		if(value == null) {
-			// 此处在极端情形下有bug.
-			// 当两个线程同时访问同一个key,
-			// 其中一个线程取回数据,设置值，做了某些修改,
-			// 然后又因为调整map大小,删除这个entry,
-			// 之后第二个线程才返回, 用旧值设置了map.
-			// 这时便出现了不一致情况.
-			// 好在这种情形实践中可以保证不让它发生.
 			value = map.putIfAbsent(key, new TValue(loadValue(key)));
 		}
 		return value;
 	}
-	public TValue put(TKey key, TValue value) { return map.put(key, value); }
-	public TValue putIfAbsent(TKey key, TValue value) {	return map.putIfAbsent(key, value);	}
+	public Object put(Object key, TValue value) { return map.put(key, value); }
+	public Object putIfAbsent(Object key, TValue value) {	return map.putIfAbsent(key, value);	}
 	
-	public void onUpdate(TKey key, TValue value) { }
-	protected Bean<?> loadValue(TKey key) { return null; }
+	public void onUpdate(Object key, TValue value) { }
+	protected Object loadValue(Object key) { return null; }
+	
+	/**
+	 * 注意,删除某元素时,必须保证没有线程在操作这个元素.
+	 * 通常做法是加锁.
+	 * @param key
+	 */
+	public void remove(Object key) {
+		TValue value = this.map.remove(key);
+		if(value != null) {
+			value.setShrink(true);
+		}
+	}
+	public void shrink() { }
+	
+	public abstract void marshalKey(OctetsStream os, Object key);
+	public abstract Object unmarshalKey(OctetsStream os) throws MarshalException;	
+	public abstract void marshalValue(OctetsStream os, Object value);
+	public abstract Object unmarshalValue(OctetsStream os) throws MarshalException;
+
 }
