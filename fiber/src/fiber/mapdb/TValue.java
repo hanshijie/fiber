@@ -1,14 +1,14 @@
 package fiber.mapdb;
 
 public final class TValue {
-	private boolean shrink;
+	private boolean shrink = false;
 	private Object value;
-	TValue() {
+	
+	public TValue() {
 		this.value = null;
-		this.shrink = false;
 	}
 	
-	TValue(Object value) {
+	public TValue(Object value) {
 		this.value = value;
 	}
 	

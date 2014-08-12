@@ -5,7 +5,7 @@ public final class WKey {
 	private final Table table;
 	private final Object key;
 	
-	WKey(Table table, Object key) {
+	public WKey(Table table, Object key) {
 		this.table = table;
 		this.key = key;
 	}

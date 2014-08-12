@@ -17,7 +17,7 @@ public abstract class Wrapper<W> {
 	protected final Notifier notifier;
 	
 	public Wrapper(W w, Notifier n) {
-		this.origin_data = w != null ? w : getNULL();
+		this.origin_data = w;
 		this.data = this.origin_data;
 		this.notifier = n;
 	}
@@ -52,15 +52,14 @@ public abstract class Wrapper<W> {
 	}
 	
 	public final boolean isNULL() {
-		return this.data == this.getNULL();
+		return this.data == null;
 	}
 	
-	public abstract W getNULL();
 	public abstract W shallowClone();
 	public abstract W create();
 
 	public final void assign(W w) {
-		this.data = w != null ? w : getNULL();
+		this.data = w;
 		Log.debug("BeanW.assign. origin_data:%s data:%s", this.origin_data, this.data);
 		notifier.onChange(this.data);
 	}
@@ -77,7 +76,7 @@ public abstract class Wrapper<W> {
 	 * @desc  注意!如果想更新data, 使用assign, 而不是refresh！！！
 	 */
 	public void refresh(W w) {
-		this.data = w != null ? w : getNULL();
+		this.data = w;
 	}
 	
 	protected final W internalGetOriginData() {

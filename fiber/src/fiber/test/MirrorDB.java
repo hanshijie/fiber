@@ -1,6 +1,6 @@
 package fiber.test;
 
-import fiber.mapdb.Database;
+import fiber.app.server.Database;
 
 
 public class MirrorDB extends Database {

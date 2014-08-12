@@ -121,6 +121,11 @@ public class Transaction {
 		LockPool.getInstance().unlock(this.lockSet);
 	}
 	
+	public void dump() {
+		for(Map.Entry<WKey, WValue> e : this.dataMap.entrySet()) {
+			Log.trace("{key=%s, value=%s", e.getKey(), e.getValue());
+		}
+	}
 	public static void main(String[] argv) {
 		/*
 		LockPool.init(133);
