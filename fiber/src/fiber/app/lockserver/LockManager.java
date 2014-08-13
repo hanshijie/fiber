@@ -7,7 +7,7 @@ import java.util.LinkedList;
 import java.util.Map;
 
 import fiber.io.Log;
-import fiber.io.MTimer;
+import fiber.io.Timer;
 import fiber.io.Octets;
 import fiber.io.OctetsStream;
 
@@ -92,7 +92,7 @@ public final class LockManager {
 				
 				if(this.status == Status.LOCKED) {
 					this.status = Status.ACQUIRING;
-					long now = MTimer.currentTimeMillis();
+					long now = Timer.currentTimeMillis();
 					if(now >= this.permitAcquireTimestamp) {
 						LockManager.addInstantAcquire(this);
 					} else {
@@ -142,7 +142,7 @@ public final class LockManager {
 	public static void processAcquires() {
 		// TODO just for test.
 		Log.debug("processAllAcquires======================");
-		long now = MTimer.currentTimeMillis();
+		long now = Timer.currentTimeMillis();
 		
 		{
 			Log.debug("processInstantAcquire==============");

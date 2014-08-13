@@ -96,7 +96,7 @@ public final class IOTransportor extends IOHandler {
 					this.session.checkForbidWrite();
 				}
 			}
-			this.session.setLastActiveTime(MTimer.currentTime());
+			this.session.setLastActiveTime(Timer.currentTime());
 		} catch(IOException e) {
 			close();
 		}

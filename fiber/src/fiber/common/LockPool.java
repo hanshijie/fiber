@@ -9,7 +9,11 @@ import fiber.io.Log;
 public final class LockPool {
 	private static LockPool instance;
 	public static void init(int initsize) {
-		instance = new LockPool(initsize);
+		if(instance == null) {
+			instance = new LockPool(initsize);
+		} else {
+			Log.fatal("LockPool can't been inited twice. initsize:%d cursize:%d", initsize, instance.locks.length);
+		}
 	}
 	public static LockPool getInstance() { return instance; }
 	

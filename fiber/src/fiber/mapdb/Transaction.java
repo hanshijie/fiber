@@ -200,22 +200,8 @@ public class Transaction {
 	
 	public void dump() {
 		for(Map.Entry<WKey, WValue> e : this.dataMap.entrySet()) {
-			Log.trace("{key=%s, value=%s", e.getKey(), e.getValue());
+			Log.trace("{key=%s, value=%s}", e.getKey(), e.getValue());
 		}
 	}
-	public static void main(String[] argv) {
-		/*
-		LockPool.init(133);
-		Transaction txn = new Transaction();
-		Table table = new Table(1, 100, 1000000) ;
-		int N = 100;
-		for(int i = N ; i > 0 ; i--) {
-			txn.putData(new WKey(table, new BInteger(i)), new WValue(new TValue(), null, null));
-		}
-		txn.lock();
-		txn.rollback();
-		txn.unlock();
-		*/
-		
-	}
+
 }

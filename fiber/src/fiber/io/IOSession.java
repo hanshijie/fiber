@@ -14,7 +14,7 @@ public final class IOSession {
 		this.outputBuffer = OctetsStream.create(config.getOutBufferSize());
 		this.datas = new LinkedList<Octets>();
 		this.coder = handler.getManager().getFactory().createCodec();
-		this.lastActiveTime = MTimer.currentTime();
+		this.lastActiveTime = Timer.currentTime();
 	}
 	
 	public int getId() {

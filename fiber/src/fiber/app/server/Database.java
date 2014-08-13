@@ -45,9 +45,9 @@ public class Database {
 		
 	};
 	
-	public static class TValueNotifier extends Wrapper.Notifier {
+	public static class WValueNotifier extends Wrapper.Notifier {
 		private final WValue value;
-		public TValueNotifier(WValue v) {
+		public WValueNotifier(WValue v) {
 			this.value = v;
 		}
 		@Override
@@ -100,7 +100,7 @@ public class Database {
 			Log.trace("getUser from table. key:%s", key);
 			final TValue v = tUser.get(uid);
 			value = new WValue(v);
-			WrapperInt wrap = new WrapperInt((Integer)v.getValue(), new TValueNotifier(value));
+			WrapperInt wrap = new WrapperInt((Integer)v.getValue(), new WValueNotifier(value));
 			value.setWrapper(wrap);
 			txn.putData(key, value);
 			return wrap;

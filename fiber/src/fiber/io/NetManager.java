@@ -6,8 +6,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import fiber.common.TaskPool;
-
 public class NetManager extends IOManager {
 
 	private final Map<Short, BeanHandler<?>> handlerStub;
@@ -59,6 +57,10 @@ public class NetManager extends IOManager {
 	public static  RpcBean<?, ?> removeRpc(int rpcid) {
 		return _rpcs.remove(rpcid);
 	}
+	
+	protected static void schedule(Runnable task, long delay) {
+		rpcExecutor.schedule(task, delay, TimeUnit.SECONDS);
+	}
 
 	/**
 	 * 向某个连接发送RPC
@@ -78,7 +80,7 @@ public class NetManager extends IOManager {
 		final RpcHandler<A, R> fhandler = handler != null ? handler : (RpcHandler<A, R>)this.handlerStub.get(rpcbean.getType());		
 		rpcbean.setOnClient(fhandler);
 		if(session == null) {
-			TaskPool.scheduleSecond(new Runnable() {
+			NetManager.schedule(new Runnable() {
 				@Override
 				public void run() {
 					handleTimeout(fhandler, session, rpcbean.getArg());

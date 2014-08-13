@@ -3,7 +3,7 @@ package fiber.app.lockserver;
 import java.util.ArrayList;
 import java.util.TreeSet;
 
-import fiber.io.MTimer;
+import fiber.io.Timer;
 import fiber.io.Octets;
 
 public final class OrderLockAcquire {
@@ -33,7 +33,7 @@ public final class OrderLockAcquire {
 	
 	public void doneLock() {
 		assert(this.orderkeys.size() == this.orderLocks.size());
-		long now = MTimer.currentTimeMillis();
+		long now = Timer.currentTimeMillis();
 		for(LockManager.Value value : this.orderLocks) {
 			value.doneLock(now);
 		}

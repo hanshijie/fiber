@@ -9,7 +9,7 @@ public final class LockServer {
 
 	public static void main(String[] args) {
 		try {
-		//long runtimeId = MTimer.currentTimeMillis();
+		//long runtimeId = Timer.currentTimeMillis();
 		String addr = "0.0.0.0";
 		short port = 2222;
 		

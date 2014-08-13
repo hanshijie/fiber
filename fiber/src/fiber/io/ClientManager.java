@@ -3,8 +3,6 @@ package fiber.io;
 import java.io.IOException;
 import java.util.Map;
 
-import fiber.common.TaskPool;
-
 public class ClientManager extends NetManager {
 	private boolean reconn;
 	private int backoff;
@@ -40,8 +38,7 @@ public class ClientManager extends NetManager {
 	
 	private final void reconnect() {
 		Log.trace("%s reconnect. backoff:%d", this, this.backoff);
-		TaskPool.scheduleSecond(new Runnable() {
-
+		schedule(new Runnable() {
 			@Override
 			public void run() {
 				try {

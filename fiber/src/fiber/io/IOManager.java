@@ -52,7 +52,7 @@ public abstract class IOManager {
 	}
 	
 	protected void checkIdle(final int interval) {
-		int minLastActiveTime = MTimer.currentTime() - interval;
+		int minLastActiveTime = Timer.currentTime() - interval;
 		for(IOSession session : this.sessionMap.values()) {
 			if(session.getLastActiveTime() < minLastActiveTime) {
 				this.onIdle(session);
@@ -96,13 +96,14 @@ public abstract class IOManager {
 		socket.setReceiveBufferSize(conf.getRecvBufferSize());
 		
 		if(sc.connect(conf.getAddr())) {
+			/*
 			IOTransportor handler = new IOTransportor(this, getPoller(), sc);
 			handler.onOpen();
-			Log.debug("directly conn succ");
-		} else {
-			Connector conn = new Connector(this, getPoller(), sc);
-			conn.permitConnect();
+			*/
+			Log.trace("directly conn succ. addr:%s", conf.getAddr());
 		}
+		Connector conn = new Connector(this, getPoller(), sc);
+		conn.permitConnect();
 	}
 	
 	public Acceptor startServer() throws IOException {

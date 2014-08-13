@@ -11,7 +11,10 @@ public final class Connector extends IOHandler {
 	}
 	
 	protected void permitConnect() {
-		register(SelectionKey.OP_CONNECT);
+		// 有可能之前调用connect时已经成功连接了,
+		// 对此不能保证还能收到 op_connect操作,
+		// 但肯定有op_write.
+		register(SelectionKey.OP_CONNECT | SelectionKey.OP_WRITE | SelectionKey.OP_READ);
 	}
 	
 	@Override
