@@ -10,7 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import fiber.common.Wrapper;
 import fiber.io.Log;
 
-public final class WMap<K, V> extends Wrapper<Map<K, V>> implements Map<K, V> {
+public class WMap<K, V> extends Wrapper<Map<K, V>> implements Map<K, V> {
 	public static <T, U> WMap<T, U> create(Map<T, U> w) {
 		return new WMap<T, U>(w.getClass(), w, Wrapper.NONE_NOTIFIER);
 	}
@@ -175,6 +175,7 @@ public final class WMap<K, V> extends Wrapper<Map<K, V>> implements Map<K, V> {
 		assert(w.keySet().size() == w.size());
 		assert(w.values().size() == w.size());
 		assert(map.size() == N);
+		Log.trace("wrapper:%s", w);
 		Log.trace("============>");
 
 		
@@ -186,6 +187,7 @@ public final class WMap<K, V> extends Wrapper<Map<K, V>> implements Map<K, V> {
 		test(new HashMap<Integer, Integer>());
 		test(new TreeMap<Integer, Integer>());
 		test(new ConcurrentHashMap<Integer, Integer>());
+		test(new fiber.pcollections.HashMap<Integer, Integer>());
 	}
 
 }

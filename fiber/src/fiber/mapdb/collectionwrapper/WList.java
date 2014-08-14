@@ -187,30 +187,26 @@ public class WList<W> extends Wrapper<List<W>> implements List<W> {
 		for(int i = 0 ; i < N ; i++) {
 			list.add(i);
 		}
-		for(int i = 0 ; i < N ; i++) {
-			list.add(2, i);
-		}
-		assert(list.size() == N * 2);
-		assert(w.size() == N * 2);
+		assert(list.size() == N);
+		assert(w.size() == N);
 		assert(!w.isModify());
 		
 		w.add(7);
 		assert(w.isModify());
 		w.add(N, N * N);
-		assert(w.size() == N * 2 + 2);
-		for(int i = 0 ; i < w.size() ; i++) {
-			Log.trace("[%d] = %s", i, w.get(i));
+		assert(w.size() == N + 2);
+		Log.trace("wrapper:%s", w);
+		for(int i = 0 ; i < N + 2 ; i++) {
+			w.remove(N  + 1 - i);
+			assert(w.size() == N  + 1 - i);
 		}
-		for(int i = 0 ; i < N * 2 + 2 ; i++) {
-			w.remove(N * 2 + 1 - i);
-			assert(w.size() == N * 2 + 1 - i);
-		}
+		Log.trace("wrapper:%s", w);
 	}
 
 	public static void main(String[] args) {
 		test(new LinkedList<Integer>());
 		test(new ArrayList<Integer>());
-
+		test(new fiber.pcollections.ArrayList<Integer>());
 	}
 
 }

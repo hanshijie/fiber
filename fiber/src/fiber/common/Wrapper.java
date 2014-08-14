@@ -24,10 +24,9 @@ public abstract class Wrapper<W> {
 	
 	@Override
 	public String toString() {
-		return  this.isModify() ? "{" 
-				+ " origin_data = " + this.origin_data
-				+ ", data = " + this.data + " }"
-				: "{ data = " + this.data + " }";
+		return  this.isModify() ? 
+				String.format("%s{origin_data:%s data:%s}", this.getClass().getSimpleName(), this.origin_data, this.data) :
+				String.format("%s{data:%s}", this.getClass().getSimpleName(), this.data);
 	}
 	
 	public final boolean isModify() {
@@ -37,7 +36,7 @@ public abstract class Wrapper<W> {
 	public final void checkModify() {
 		if(!isModify()) {
 			this.data = this.shallowClone();
-			Log.debug("BeanW.checkModify. origin_data:%s data:%s", this.origin_data, this.data);
+			Log.debug("BeanW.checkModify. data:%s", this.data);
 			notifier.onChange(this.data);
 		}
 	}

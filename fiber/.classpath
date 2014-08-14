@@ -6,5 +6,6 @@
 	<classpathentry kind="lib" path="E:/bdb.jar"/>
 	<classpathentry kind="lib" path="E:/luajava-mirror.jar"/>
 	<classpathentry kind="lib" path="E:/googleconcurrentlinkedhashmap.jar"/>
+	<classpathentry kind="lib" path="E:/pcollections.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
