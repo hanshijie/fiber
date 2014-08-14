@@ -14,11 +14,15 @@ public class LuaState {
 	
 	public static Globals create(String luaFile, String searchPath) {
 		Globals g = create();
-		LuaValue pkg = g.get("package");
-		pkg.set("path", pkg.get("path").tostring() + ";" + searchPath + "/?.lua");
+		addSearchPath(g, searchPath);
 		if(!luaFile.isEmpty())
 			g.loadfile(luaFile).call();
 		return g;
+	}
+	
+	public static void addSearchPath(Globals g, String searchPath) {
+		LuaValue pkg = g.get("package");
+		pkg.set("path", String.format("%s;%s/?.lua", pkg.get("path").tostring(), searchPath));
 	}
 	
 	public static void main(String[] args) {
