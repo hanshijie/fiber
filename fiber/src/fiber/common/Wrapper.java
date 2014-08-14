@@ -1,9 +1,9 @@
-package fiber.app.server;
+package fiber.common;
 
 import fiber.io.Log;
 
 
-public abstract class Wrapper<W> implements fiber.mapdb.Wrapper {
+public abstract class Wrapper<W> {
 	public static abstract class Notifier {
 		public abstract void onChange(Object o);
 	}

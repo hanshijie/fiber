@@ -4,7 +4,7 @@ public final class WValue {
 	private final TValue tvalue;
 	private final Object originValue;
 	private Object curValue;
-	private Wrapper wrapper;
+	private Object wrapper;
 	public WValue(TValue tv) {
 		this.tvalue = tv;
 		this.curValue = this.originValue = tv.getValue();
@@ -30,7 +30,7 @@ public final class WValue {
 		return wrapper;
 	}
 	
-	public final void setWrapper(Wrapper wrapper) {
+	public final void setWrapper(Object wrapper) {
 		this.wrapper = wrapper;
 	}
 
@@ -44,9 +44,6 @@ public final class WValue {
 	
 	public void commit() {
 		if(isModify()) {
-			if(wrapper != null) {
-				wrapper.commit();
-			}
 			tvalue.setValue(curValue);
 		}
 	}

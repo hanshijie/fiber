@@ -4,6 +4,7 @@ import java.util.Map;
 
 import fiber.common.LockPool;
 import fiber.common.Marshaller;
+import fiber.common.Wrapper;
 import fiber.io.Log;
 import fiber.io.MarshalException;
 import fiber.io.OctetsStream;
@@ -81,9 +82,6 @@ public class Database {
 			this.data = value;
 			forceModify();
 		}
-
-		@Override
-		public void commit() { }
 		
 	}
 	

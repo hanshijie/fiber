@@ -1,21 +1,35 @@
 package fiber.mapdb.collectionwrapper;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
 
-import fiber.app.server.Wrapper;
+import fiber.common.Wrapper;
+import fiber.io.Log;
 
 public final class WMap<K, V> extends Wrapper<Map<K, V>> implements Map<K, V> {
+	public static <T, U> WMap<T, U> create(Map<T, U> w) {
+		return new WMap<T, U>(w.getClass(), w, Wrapper.NONE_NOTIFIER);
+	}
+	
+	public static <T, U> WMap<T, U> create(Class<?> c, Map<T, U> w) {
+		return new WMap<T, U>(c, w, Wrapper.NONE_NOTIFIER);
+	}
+	
+	public static <T, U> WMap<T, U> create(Class<?> c, Map<T, U> w, Notifier n) {
+		return new WMap<T, U>(c, w, n);
+	}
+	
+	
+	
 	private final Class<? extends Map<K, V>> clazz; 
-	private boolean flat;
-	private Map<K, V> insertupdateMap;
-	private Set<Object> removeSet;
-	public WMap(Class<? extends Map<K, V>> c, Map<K, V> w, Notifier n) {
+	@SuppressWarnings("unchecked")
+	public WMap(Class<?> c, Map<K, V> w, Notifier n) {
 		super(w, n);
-		clazz = c;
+		clazz = (Class<? extends Map<K, V>>) c;
 	}
 	
 	public Map<K, V> newInstance() {
@@ -27,213 +41,151 @@ public final class WMap<K, V> extends Wrapper<Map<K, V>> implements Map<K, V> {
 		return null;
 	}
 	
-	public void doflat() {
-		this.data = shallowClone();
-		this.insertupdateMap = null;
-		this.removeSet = null;
-		flat = true;
-		this.notifier.onChange(this.data);
-	}
-	
 	@Override
 	public Set<Entry<K, V>> entrySet() {
-		if(!flat) {
-			doflat();
-		}
 		return this.data.entrySet();
 	}
 
 	@Override
-	public void commit() {
-		if(!flat) {
-			if(this.removeSet != null) {
-				for(Object key : this.removeSet) {
-					this.data.remove(key);
-				}
-			}
-			if(this.insertupdateMap != null) {
-				this.data.putAll(this.insertupdateMap);
-			}
-		}
-	}
-
-	@Override
 	public void clear() {
-		if(flat) {
+		if(this.data.isEmpty()) return;
+		if(this.isModify()) {
 			this.data.clear();
 		} else {
-			if(this.data.isEmpty() && this.insertupdateMap == null) return;
-			flat = true;
-			this.insertupdateMap = null;
-			this.removeSet = null;
-			this.data =  newInstance();
+			this.data = newInstance();
 			this.notifier.onChange(this.data);
-		}	
+		}
 	}
 
 	@Override
 	public boolean containsKey(Object key) {
-		if(flat) {
-			return this.data.containsKey(key);
-		} else {
-			return (this.insertupdateMap != null && this.insertupdateMap.containsKey(key)) || 
-				(this.data.containsKey(key) && (this.removeSet == null || !this.removeSet.contains(key)));
-		}
+		return this.data.containsKey(key);
 	}
 
 	@Override
 	public boolean containsValue(Object value) {
-		if(flat || (this.insertupdateMap == null && this.removeSet == null)) {
-			return this.data.containsValue(value);
-		} else {
-			doflat();
-			return this.data.containsValue(value);
-		}
+		return this.data.containsValue(value);
 	}
 
 	@Override
 	public V get(Object key) {
-		if(flat) {
-			return this.data.get(key);
-		} else {
-			if(this.removeSet != null & this.removeSet.contains(key)) return null;
-			if(this.insertupdateMap != null) {
-				V value = this.insertupdateMap.get(key);
-				if(value != null) return value;
-			}
-			return this.data.get(key);
-		}
+		return this.data.get(key);
 	}
 
 	@Override
 	public boolean isEmpty() {
-		if(flat || (this.insertupdateMap == null || this.insertupdateMap.isEmpty())) {
-			return this.data.isEmpty();
-		} else {
-			doflat();
-			return this.data.isEmpty();
-		}
+		return this.data.isEmpty();
 	}
 
 	@Override
 	public Set<K> keySet() {
-		if(flat || (this.insertupdateMap == null || this.insertupdateMap.isEmpty())) {
-			return this.data.keySet();
-		} else {
-			doflat();
-			return this.data.keySet();
-		}
+		return this.data.keySet();
 	}
 
 	@Override
 	public V put(K key, V value) {
-		if(flat) {
-			return this.data.put(key, value);
-		} else {
-			if(this.insertupdateMap == null && this.removeSet == null) {
-				this.notifier.onChange(this.data);
-			}
-			
-			if(this.removeSet != null) {
-				this.removeSet.remove(key);
-			}
-			if(this.insertupdateMap != null) {
-				V old = this.insertupdateMap.put(key, value);
-				return (old == null) ? this.data.get(key) : old;
-			} else {
-				this.insertupdateMap = new TreeMap<K, V>();
-				this.insertupdateMap.put(key, value);
-				return this.data.get(key);
-			}
-		}
+		checkModify();
+		return this.data.put(key, value);
 	}
 
 	@Override
 	public void putAll(Map<? extends K, ? extends V> m) {
 		if(m.isEmpty()) return;
-		if(flat) {
-			this.data.putAll(m);
-		} else {
-			if(this.insertupdateMap == null && this.removeSet == null) {
-				this.notifier.onChange(this.data);
-			}
-			if(this.removeSet != null) {
-				for(K key : m.keySet()) { 
-					this.removeSet.remove(key);
-				}
-			}
-			if(this.insertupdateMap == null) {
-				this.insertupdateMap = new TreeMap<K, V>();
-			}
-			this.insertupdateMap.putAll(m);
-		}	
-		
+		checkModify();
+		this.data.putAll(m);
 	}
 
 	@Override
 	public V remove(Object key) {
-		if(flat) {
+		if(this.isModify()) {
 			return this.data.remove(key);
 		} else {
-			V old = (this.insertupdateMap != null) ? insertupdateMap.remove(key) : null;
-			old = old != null ? old : this.data.get(key);
-			if(old != null) {
-				if(this.removeSet == null) {
-					this.removeSet = new TreeSet<Object>();
-					if(this.insertupdateMap == null) {
-						this.notifier.onChange(this.data);
-					}
-				}
-				this.removeSet.add(key);
-			}
-			return old;
+			if(!this.data.containsKey(key)) return null;
+			checkModify();
+			return this.data.remove(key);
 		}
 	}
 
 	@Override
 	public int size() {
-		if(flat || (this.insertupdateMap == null && this.removeSet == null)) {
-			return this.data.size();
-		} else {
-			int s = this.data.size();
-			if(this.insertupdateMap != null) {
-				for(K key : this.insertupdateMap.keySet()) {
-					if(!this.data.containsKey(key)) {
-						s++;
-					}
-				}
-			}
-			if(this.removeSet != null) {
-				s -= this.removeSet.size();
-			}
-			return s;
-		}
+		return this.data.size();
 	}
 
 	@Override
 	
 	public Collection<V> values() {
-		if(flat || (this.insertupdateMap == null && this.removeSet == null)) {
-			return this.data.values();
-		} else {
-			doflat();
-			return this.data.values();
-		}
+		return this.data.values();
 	}
 
 	@Override
 	public Map<K, V> shallowClone() {
 		Map<K, V> newMap = newInstance();
 		newMap.putAll(this.data);
-		if(this.insertupdateMap != null) {
-			newMap.putAll(this.insertupdateMap);
-		}
-		if(this.removeSet != null) {
-			for(Object key : this.removeSet) {
-				newMap.remove(key);
-			}
-		}
 		return newMap;
+	}
+	
+	public static void assert2(int k, int v) {
+		assert(v == k * k);
+	}
+	public static void test(Map<Integer, Integer> map) {
+		int N = 10;
+		for(int i = 0 ; i < N ; i++) {
+			map.put(i, i * i);
+		}
+		WMap<Integer, Integer> w = WMap.create(map.getClass(), map);
+		
+		for(Map.Entry<Integer, Integer> e : map.entrySet()) {
+			int k = e.getKey();
+			int v = e.getValue();
+			assert2(k, v);
+		}
+		
+		for(Map.Entry<Integer, Integer> e : w.entrySet()) {
+			int k = e.getKey();
+			int v = e.getValue();
+			assert2(k, v);
+		}
+		assert(w.size() == N);
+		assert(w.keySet().size() == N);
+		assert(w.values().size() == N);
+		
+		assert2(1, w.get(1));
+		assert(w.get(N) == null);
+		
+		w.remove(-1);
+		assert(!w.isModify());
+		assert(w.size() == N);
+		w.remove(0);
+		assert(w.size() == N - 1);
+		w.put(N, N * N);
+		assert(w.size() == N);
+		w.put(1, 111);
+		assert(w.size() == N);
+		w.put(N + 1, (N + 1) * (N + 1));
+		assert(w.size() == N + 1);
+		assert(w.keySet().size() == N + 1);
+		assert(w.values().size() == N + 1);
+		
+		HashMap<Integer, Integer> newM = new HashMap<Integer, Integer>();
+		for(int i = N * 2 ; i < N * 3 ; i++) {
+			newM.put(i, i * i + 10000);
+		}
+		w.putAll(newM);
+		assert(w.size() == N * 2 + 1);
+		assert(w.keySet().size() == w.size());
+		assert(w.values().size() == w.size());
+		assert(map.size() == N);
+		Log.trace("============>");
+
+		
+		Log.trace("############");
+		
+	}
+	
+	public static void main(String[] args) {
+		test(new HashMap<Integer, Integer>());
+		test(new TreeMap<Integer, Integer>());
+		test(new ConcurrentHashMap<Integer, Integer>());
 	}
 
 }
