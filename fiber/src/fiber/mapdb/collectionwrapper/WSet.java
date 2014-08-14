@@ -151,10 +151,36 @@ public class WSet<W> extends Wrapper<Set<W>> implements Set<W> {
 		
 	}
 	
+	public static void test2(Set<Integer> set) {
+		int N = 10;
+		for(int i = 0 ; i < N ; i++) {
+			set.add(i);
+		}
+		WSet<Integer> w = WPSet.create(set.getClass(), set);
+		assert(w.size() == N);
+		assert(!w.isModify());
+		
+		for(int i = N ; i < N * 2 ; i++) {
+			w.add(i);
+			assert(w.isModify());
+			assert(w.size() == i + 1);
+		}
+		Log.trace("wrapper:%s", w);
+		for(int i = 0 ; i < N * 2 ; i++) {
+			w.remove(i);
+			assert(w.size() == N * 2 - 1 - i);
+		}
+		Log.trace("wrapper:%s", w);
+		assert(set.size() == N);
+		
+	}
+	
 	public static void main(String[] args) {
 		test(new TreeSet<Integer>());
 		test(new HashSet<Integer>());
 		test(new fiber.pcollections.HashSet<Integer>());
+		test2(new fiber.pcollections.HashSet<Integer>());
+		//test2(new HashSet<Integer>());
 	}
 
 }

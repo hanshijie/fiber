@@ -9,7 +9,6 @@ import fiber.io.ClientManager;
 import fiber.io.IOConfig;
 import fiber.io.IOPoller;
 import fiber.io.Log;
-import fiber.io.SystemConfig;
 
 public class Client {
 
@@ -20,8 +19,7 @@ public class Client {
 				System.out.print("usage. Client [ip] [port] [connectNum] [taskNum]");
 				return;
 			}
-			SystemConfig config = SystemConfig.getInstance();
-			config.setLogLevel(Log.LOG_NOTICE);
+			System.setProperty("log_level", Integer.valueOf(Log.LOG_TRACE).toString());
 			String addr = args[0];
 			short port = Short.parseShort(args[1]);
 			final int CONNECT_NUM = Integer.parseInt(args[2]);

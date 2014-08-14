@@ -1,19 +1,18 @@
 package fiber.test;
 
-import fiber.common.LuaState;
 import fiber.io.Log;
 
 public class TestMultiLua {
 
 	public static void main(String[] args) {
 		Log.notice("init...");
-
+/*
 		final String file = "src/mirror/test/hello.lua";
 		LuaState.setBaseDir("src/mirror/test");
 		LuaState.setInitLuaFile(file);
 		LuaState.get();
 		Log.notice("exit..");
-		/*
+		
 		final Globals g = JsePlatform.standardGlobals();
 		LuaJC.install(g);
 		int N = 1000;

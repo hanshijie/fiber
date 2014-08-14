@@ -8,7 +8,6 @@ import fiber.common.Wrapper;
 import fiber.io.Log;
 import fiber.io.MarshalException;
 import fiber.io.OctetsStream;
-import fiber.io.SystemConfig;
 import fiber.mapdb.TValue;
 import fiber.mapdb.Table;
 import fiber.mapdb.WKey;
@@ -109,7 +108,7 @@ public class Database {
 	
 	
 	public static void main(String[] args) {
-		SystemConfig.getInstance().setLogLevel(0);
+		System.setProperty("log_level", Integer.valueOf(Log.LOG_ALL).toString());
 		LockPool.init(32);
 		int N = 5;
 		for(int i = 1 ; i < N ; i++) {

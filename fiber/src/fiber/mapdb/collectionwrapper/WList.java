@@ -202,11 +202,35 @@ public class WList<W> extends Wrapper<List<W>> implements List<W> {
 		}
 		Log.trace("wrapper:%s", w);
 	}
+	
+	public static void test2(List<Integer> list) {
+		WList<Integer> w = WPList.create(list);
+		int N = 10;
+		for(int i = 0 ; i < N ; i++) {
+			list.add(i);
+		}
+		assert(list.size() == N);
+		assert(w.size() == N);
+		assert(!w.isModify());
+		
+		w.add(7);
+		assert(w.isModify());
+		w.add(N, N * N);
+		assert(w.size() == N + 2);
+		Log.trace("wrapper:%s", w);
+		for(int i = 0 ; i < N + 2 ; i++) {
+			w.remove(N  + 1 - i);
+			assert(w.size() == N  + 1 - i);
+		}
+		Log.trace("wrapper:%s", w);
+	}
 
 	public static void main(String[] args) {
 		test(new LinkedList<Integer>());
 		test(new ArrayList<Integer>());
 		test(new fiber.pcollections.ArrayList<Integer>());
+		test2(new fiber.pcollections.ArrayList<Integer>());
+		//test2(new LinkedList<Integer>());
 	}
 
 }

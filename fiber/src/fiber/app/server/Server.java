@@ -8,7 +8,6 @@ import fiber.io.IOConfig;
 import fiber.io.IOPoller;
 import fiber.io.Log;
 import fiber.io.ServerManager;
-import fiber.io.SystemConfig;
 
 public class Server {
 
@@ -19,9 +18,8 @@ public class Server {
 				Log.trace("Usage:  Server [loglevel] ");
 				return;
 			}
-			SystemConfig config = SystemConfig.getInstance();
 			final int logLevel = Integer.parseInt(args[0]);
-			config.setLogLevel(logLevel);
+			System.setProperty("log_level", Integer.valueOf(logLevel).toString());
 
 			//final String LUA_FILE = args[2];
 			IOPoller poller = new IOPoller(1);
