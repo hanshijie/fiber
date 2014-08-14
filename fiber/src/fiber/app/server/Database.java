@@ -63,7 +63,7 @@ public class Database {
 	}
 	
 	public final static Table tUser = new IntIntTable(1, true);
-	public static class WrapperInt extends Wrapper<Integer> {
+	public final static class WrapperInt extends Wrapper<Integer> {
 		public WrapperInt(Integer w, Notifier n) {
 			super(w, n);
 		}
@@ -71,11 +71,6 @@ public class Database {
 		@Override
 		public Integer shallowClone() {
 			return this.origin_data;
-		}
-
-		@Override
-		public Integer create() {
-			return 0;
 		}
 		
 		public final Integer get() {
@@ -86,6 +81,9 @@ public class Database {
 			this.data = value;
 			forceModify();
 		}
+
+		@Override
+		public void commit() { }
 		
 	}
 	
@@ -118,7 +116,6 @@ public class Database {
 		int N = 5;
 		for(int i = 1 ; i < N ; i++) {
 			WrapperInt wrap = getUser(i);
-			if(wrap.isNULL()) wrap.reset();
 			wrap.set(i * i);
 		}
 		

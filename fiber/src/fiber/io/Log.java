@@ -87,7 +87,7 @@ public final class Log {
 		
 		private final void updateTime() {
 			int cur = (int)(System.currentTimeMillis() / 1000);
-			if(cur!= now) {
+			if(cur != now) {
 				// 没严格加锁.反正错了也无妨
 				now = cur;
 				strFormatDayTimeNow = timeFormat.format(new Date());

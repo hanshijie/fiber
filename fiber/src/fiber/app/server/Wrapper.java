@@ -3,7 +3,7 @@ package fiber.app.server;
 import fiber.io.Log;
 
 
-public abstract class Wrapper<W> {
+public abstract class Wrapper<W> implements fiber.mapdb.Wrapper {
 	public static abstract class Notifier {
 		public abstract void onChange(Object o);
 	}
@@ -56,17 +56,10 @@ public abstract class Wrapper<W> {
 	}
 	
 	public abstract W shallowClone();
-	public abstract W create();
 
 	public final void assign(W w) {
 		this.data = w;
 		Log.debug("BeanW.assign. origin_data:%s data:%s", this.origin_data, this.data);
-		notifier.onChange(this.data);
-	}
-	
-	public final void reset() {
-		this.data = create();
-		Log.debug("BeanW.reset. origin_data:%s data:%s", this.origin_data, this.data);
 		notifier.onChange(this.data);
 	}
 	

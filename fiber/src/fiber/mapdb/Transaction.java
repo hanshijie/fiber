@@ -106,7 +106,7 @@ public class Transaction {
 		//this.clearDatas();
 	}
 	
-	public void commit() throws Exception {
+	public void commit() throws ConflictException {
 		Log.info("%s commit. start.", this);
 		this.lock();
 		for(WValue value : this.dataMap.values()) {
@@ -123,16 +123,13 @@ public class Transaction {
 			value.commit();
 			key.getTable().onUpdate(key, value.getTvalue());
 		}
-		for(WValue value : this.dataMap.values()) {
-			value.commit();
-		}
 		commitModifyData();
 		this.logger.commit();
 		this.unlock();
 		Log.info("%s commit. end.", this);
 	}
 	
-	protected void commitModifyData() throws Exception {
+	protected void commitModifyData() {
 		// TODO 作为一个完整事务将修改的数据加入到变化表中.
 	}
 	
