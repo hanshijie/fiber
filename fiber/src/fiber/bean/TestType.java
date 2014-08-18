@@ -1,8 +1,8 @@
 package fiber.bean;
 
 import fiber.io.*;
-import java.util.*;
 
+import java.util.*;
 
 
 public final class TestType implements Bean<TestType>

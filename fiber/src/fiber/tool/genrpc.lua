@@ -21,8 +21,6 @@ local template_bean = [=[
 package fiber.bean;
 
 import fiber.io.*;
-import java.util.*;
-
 $(bean_import)
 
 public final class $(bean.name) implements Bean<$(bean.name)>
@@ -495,13 +493,25 @@ end
 
 dofile("rpcalls.lua")
 
+local containtypes = { vector = true, hashset = true, treeset = true, hashmap = true, treemap = true}
+local function is_container(type)
+	return containtypes[type]
+end
+
 local context = {
 	bean = nil,  	-- current bean
 	var = nil, 		-- current variable
 	handler = nil, 	-- current handler
 	
-	bean_import = function ()
-		return ""
+	bean_import = function (ctx)
+		local s = ""
+		for _, var in ipairs(ctx.bean) do
+			if is_container(var.basetype) then
+				s = s .. "import java.util.*;\n"
+				break
+			end
+		end
+		return s
 	end,
 }
 
