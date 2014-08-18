@@ -3,7 +3,6 @@ package fiber.bean;
 import fiber.io.*;
 
 
-
 public final class HelloArg implements Bean<HelloArg>
 {
 	public static final int TYPE = 41;

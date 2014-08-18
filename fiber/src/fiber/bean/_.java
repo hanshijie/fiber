@@ -34,6 +34,7 @@ class _ {
 	public static HashMap<Long, String> unmarshal_hashmap_long_string(OctetsStream os) throws MarshalException { HashMap<Long, String> y = new HashMap<Long, String>(); for(int n = os.unmarshalUInt() ; n > 0 ; n--) y.put(unmarshal_long(os), unmarshal_string(os)); return y; }
 	public static void marshalscheme_hashmap_long_string(OctetsStream os, HashMap<Long, String> x) { os.marshalUInt(x.size()); for(Map.Entry<Long, String> e : x.entrySet()) { marshal_long(os, e.getKey()); marshalscheme_string(os, e.getValue()); } }
 	public static HashMap<Long, String> unmarshalscheme_hashmap_long_string(OctetsStream os) throws MarshalException { HashMap<Long, String> y = new HashMap<Long, String>(); for(int n = os.unmarshalUInt() ; n > 0 ; n--) y.put(unmarshal_long(os), unmarshalscheme_string(os)); return y; }
+
 	public static short clone_short(short x) { return x; }
 	public static int hashcode_short(short x) { return x; }
 	public static boolean equals_short(short x, short y) { return x == y; }
@@ -73,6 +74,7 @@ class _ {
 	public static TreeMap<TestBean, Boolean> unmarshal_treemap_TestBean_bool(OctetsStream os) throws MarshalException { TreeMap<TestBean, Boolean> y = new TreeMap<TestBean, Boolean>(); for(int n = os.unmarshalUInt() ; n > 0 ; n--) y.put(unmarshal_TestBean(os), unmarshal_bool(os)); return y; }
 	public static void marshalscheme_treemap_TestBean_bool(OctetsStream os, TreeMap<TestBean, Boolean> x) { os.marshalUInt(x.size()); for(Map.Entry<TestBean, Boolean> e : x.entrySet()) { marshal_TestBean(os, e.getKey()); marshalscheme_bool(os, e.getValue()); } }
 	public static TreeMap<TestBean, Boolean> unmarshalscheme_treemap_TestBean_bool(OctetsStream os) throws MarshalException { TreeMap<TestBean, Boolean> y = new TreeMap<TestBean, Boolean>(); for(int n = os.unmarshalUInt() ; n > 0 ; n--) y.put(unmarshal_TestBean(os), unmarshalscheme_bool(os)); return y; }
+
 	public static long clone_long(long x) { return x; }
 	public static int hashcode_long(long x) { return ((Long)x).hashCode(); }
 	public static boolean equals_long(long x, long y) { return x == y; }
@@ -92,6 +94,7 @@ class _ {
 	public static HashSet<Long> unmarshal_hashset_long(OctetsStream os) throws MarshalException { HashSet<Long> y = new HashSet<Long>(); for(int n = os.unmarshalUInt() ; n > 0 ; n--) y.add(unmarshal_long(os)); return y; }
 	public static void marshalscheme_hashset_long(OctetsStream os, HashSet<Long> x) { os.marshalUInt(x.size()); for(Long e : x) marshalscheme_long(os, e); }
 	public static HashSet<Long> unmarshalscheme_hashset_long(OctetsStream os) throws MarshalException { HashSet<Long> y = new HashSet<Long>(); for(int n = os.unmarshalUInt() ; n > 0 ; n--) y.add(unmarshalscheme_long(os)); return y; }
+
 	public static int clone_int(int x) { return x; }
 	public static int hashcode_int(int x) { return x; }
 	public static boolean equals_int(int x, int y) { return x == y; }
@@ -111,6 +114,7 @@ class _ {
 	public static ArrayList<Boolean> unmarshal_vector_bool(OctetsStream os) throws MarshalException { ArrayList<Boolean> y = new ArrayList<Boolean>(); for(int n = os.unmarshalUInt() ; n > 0 ; n--) y.add(unmarshal_bool(os)); return y; }
 	public static void marshalscheme_vector_bool(OctetsStream os, ArrayList<Boolean> x) { os.marshalUInt(x.size()); for(Boolean e : x) marshalscheme_bool(os, e); }
 	public static ArrayList<Boolean> unmarshalscheme_vector_bool(OctetsStream os) throws MarshalException { ArrayList<Boolean> y = new ArrayList<Boolean>(); for(int n = os.unmarshalUInt() ; n > 0 ; n--) y.add(unmarshalscheme_bool(os)); return y; }
+
 	public static byte clone_byte(byte x) { return x; }
 	public static int hashcode_byte(byte x) { return x; }
 	public static boolean equals_byte(byte x, byte y) { return x == y; }
@@ -130,6 +134,7 @@ class _ {
 	public static TreeSet<Float> unmarshal_treeset_float(OctetsStream os) throws MarshalException { TreeSet<Float> y = new TreeSet<Float>(); for(int n = os.unmarshalUInt() ; n > 0 ; n--) y.add(unmarshal_float(os)); return y; }
 	public static void marshalscheme_treeset_float(OctetsStream os, TreeSet<Float> x) { os.marshalUInt(x.size()); for(Float e : x) marshalscheme_float(os, e); }
 	public static TreeSet<Float> unmarshalscheme_treeset_float(OctetsStream os) throws MarshalException { TreeSet<Float> y = new TreeSet<Float>(); for(int n = os.unmarshalUInt() ; n > 0 ; n--) y.add(unmarshalscheme_float(os)); return y; }
+
 	public static TestBean clone_TestBean(TestBean x) { return x.clone(); }
 	public static int hashcode_TestBean(TestBean x) { return x.hashCode(); }
 	public static boolean equals_TestBean(TestBean x, TestBean y) { return x.equals(y); }

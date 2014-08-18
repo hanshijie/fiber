@@ -3,7 +3,6 @@ package fiber.bean;
 import fiber.io.*;
 
 
-
 public final class TestBean implements Bean<TestBean>
 {
 	public static final int TYPE = 2;

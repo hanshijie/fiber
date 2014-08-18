@@ -733,6 +733,7 @@ local helper_processor = {
 		  var.sid, var.finaltype, var.finalvalue, value_sid))
 		table.insert(c, string.format("\tpublic static %s unmarshalscheme_%s(OctetsStream os) throws MarshalException { %s y = new %s(); for(int n = os.unmarshalUInt() ; n > 0 ; n--) y.add(unmarshalscheme_%s(os)); return y; }", 
 		 var.finaltype, var.sid, var.finaltype, var.finaltype, value_sid))		
+		table.insert(c, "")
 	end,
 	hashset = function (var, c)
 		local value_sid = get_sidtype(var.value)
@@ -752,6 +753,7 @@ local helper_processor = {
 		  var.sid, var.finaltype, var.finalvalue, value_sid))
 		table.insert(c, string.format("\tpublic static %s unmarshalscheme_%s(OctetsStream os) throws MarshalException { %s y = new %s(); for(int n = os.unmarshalUInt() ; n > 0 ; n--) y.add(unmarshalscheme_%s(os)); return y; }", 
 		 var.finaltype, var.sid, var.finaltype, var.finaltype, value_sid))
+		table.insert(c, "")
 	end,
 	treeset = function (var, c)
 		local value_sid = get_sidtype(var.value)
@@ -771,6 +773,7 @@ local helper_processor = {
 		  var.sid, var.finaltype, var.finalvalue, value_sid))
 		table.insert(c, string.format("\tpublic static %s unmarshalscheme_%s(OctetsStream os) throws MarshalException { %s y = new %s(); for(int n = os.unmarshalUInt() ; n > 0 ; n--) y.add(unmarshalscheme_%s(os)); return y; }", 
 		 var.finaltype, var.sid, var.finaltype, var.finaltype, value_sid))	
+		table.insert(c, "")
 	end,
 	hashmap = function (var, c)
 		local key_sid = get_sidtype(var.key)
@@ -791,6 +794,7 @@ local helper_processor = {
 		  var.sid, var.finaltype, var.finalkey, var.finalvalue, key_sid, value_sid))
 		table.insert(c, string.format("\tpublic static %s unmarshalscheme_%s(OctetsStream os) throws MarshalException { %s y = new %s(); for(int n = os.unmarshalUInt() ; n > 0 ; n--) y.put(unmarshal_%s(os), unmarshalscheme_%s(os)); return y; }", 
 		 var.finaltype, var.sid, var.finaltype, var.finaltype, key_sid, value_sid))	
+		table.insert(c, "")
 	end,
 	treemap = function (var, c)
 		local key_sid = get_sidtype(var.key)
@@ -811,6 +815,7 @@ local helper_processor = {
 		  var.sid, var.finaltype, var.finalkey, var.finalvalue, key_sid, value_sid))
 		table.insert(c, string.format("\tpublic static %s unmarshalscheme_%s(OctetsStream os) throws MarshalException { %s y = new %s(); for(int n = os.unmarshalUInt() ; n > 0 ; n--) y.put(unmarshal_%s(os), unmarshalscheme_%s(os)); return y; }", 
 		 var.finaltype, var.sid, var.finaltype, var.finaltype, key_sid, value_sid))	
+		table.insert(c, "")
 	end,
 	bean = function(var, c)
 		table.insert(c, string.format("\tpublic static %s clone_%s(%s x) { return x.clone(); }", var.finaltype, var.sid, var.finaltype))
