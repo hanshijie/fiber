@@ -3,7 +3,7 @@ package fiber.common;
 import org.luaj.vm2.Globals;
 
 public class ScriptEngine {
-	private static int version = 0;
+	private static volatile int version = 0;
 
 	public static interface Factory {
 		Globals create();

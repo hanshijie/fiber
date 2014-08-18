@@ -24,7 +24,7 @@ public class Server {
 			//final String LUA_FILE = args[2];
 			IOPoller poller = new IOPoller(1);
 
-			final Map<Short, BeanHandler<?>> handlerStub = AllHandlers.get();
+			final Map<Integer, BeanHandler<?>> handlerStub = AllHandlers.get();
 			//for(int i = 0 ; i < 8 ; i++)
 			{	
 				String addr = "0.0.0.0";

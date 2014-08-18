@@ -1,14 +1,13 @@
 package fiber.db;
 
 import java.io.File;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
 import com.sleepycat.je.Database;
 import com.sleepycat.je.DatabaseConfig;
-import com.sleepycat.je.Durability;
 import com.sleepycat.je.Environment;
 import com.sleepycat.je.EnvironmentConfig;
 import com.sleepycat.je.Transaction;
@@ -17,11 +16,17 @@ import com.sleepycat.je.TransactionConfig;
 import fiber.io.Log;
 
 public class BDBStorage {
+
+	final EnvironmentConfig envConf;
+	final DatabaseConfig dbConf;
+	final TransactionConfig txnConf;
+	
+	final Environment env;
+	
 	final String root;
 	Map<Integer, Database> databases;
 	Map<Integer, ReentrantLock> locks;
-	final EnvironmentConfig envConf;
-	final Environment env;
+	
 	public BDBStorage(BDBConfig conf) {
 		// 如果数据库根目录不存在,则创建之
 		this.root = conf.getEnvRoot();
@@ -36,15 +41,25 @@ public class BDBStorage {
 		if(conf.getCacheSize() != 0) {
 			this.envConf.setCacheSize(conf.getCacheSize());
 		}
-		if(conf.getDurability() != null) {
-			this.envConf.setDurability(conf.getDurability());
+		if(conf.getEnvDurability() != null) {
+			this.envConf.setDurability(conf.getEnvDurability());
 		}
+		
+		this.dbConf = new DatabaseConfig();
+		this.dbConf.setAllowCreate(true);
+		this.dbConf.setTransactional(true);
+		
+		this.txnConf = new TransactionConfig();
+		if(conf.getTxnDurability() != null) {
+			this.txnConf.setDurability(conf.getTxnDurability());
+		}
+		
 		this.env = new Environment(new File(root), envConf);
 		
-		this.locks = new HashMap<Integer, ReentrantLock>();
-		this.databases = new HashMap<Integer, Database>();
+		this.locks = new ConcurrentHashMap<Integer, ReentrantLock>();
+		this.databases = new ConcurrentHashMap<Integer, Database>();
 		for(Map.Entry<Integer, String> e : conf.getDatabases().entrySet()) {
-			addDB(e.getKey(), e.getValue(), false);
+			addDB(e.getKey(), e.getValue());
 		}
 		
 		Runtime.getRuntime().addShutdownHook(
@@ -61,35 +76,23 @@ public class BDBStorage {
 	}
 	
 	/**
-	 * 
-	 * @param dbid
-	 * @param dbname
-	 * @param immutable databases与locks是hashmap类型,不支持并发读写.
-	 *  	如果数据库初始化完毕后再加新表需要指定此标记为true, 
-	 *  	通过复制添加的方式替换databases. 
+	 * 重新加载数据库配置.实际上只能做添加新表的操作.
 	 */
-	public void addDB(int dbid, String dbname, boolean immutable) {
-		synchronized(this.env) { 
-			DatabaseConfig dbConf = new DatabaseConfig();
-			dbConf.setAllowCreate(true);
-			dbConf.setTransactional(true);
-			Database db = this.env.openDatabase(null, dbname, dbConf);
-			Log.trace("database open. id:%d name:%s", dbid, dbname);
-			if(!immutable) {
-				this.databases.put(dbid, db);
-				this.locks.put(dbid, new ReentrantLock());	
-			} else {
-				HashMap<Integer, Database> newdbs = new HashMap<Integer, Database>();
-				newdbs.putAll(this.databases);
-				newdbs.put(dbid, db);
-				
-				HashMap<Integer, ReentrantLock> newlocks = new HashMap<Integer, ReentrantLock>();
-				newlocks.putAll(this.locks);
-				newlocks.put(dbid, new ReentrantLock());
-				
-				this.locks = newlocks;
-				this.databases = newdbs;
+	public void reloadConfig(BDBConfig conf) {
+		for(Map.Entry<Integer, String> e : conf.getDatabases().entrySet()) {
+			if(!this.databases.containsKey(e.getKey())) {
+				addDB(e.getKey(), e.getValue());
 			}
+		}
+	}
+	
+	public void addDB(int dbid, String dbname) {
+		synchronized(this.env) { 
+			Database db = this.env.openDatabase(null, dbname, this.dbConf);
+			Log.trace("database open. id:%d name:%s", dbid, dbname);
+			this.databases.put(dbid, db);
+			this.locks.put(dbid, new ReentrantLock());	
+
 		}
 	}
 	
@@ -98,9 +101,7 @@ public class BDBStorage {
 	}
 	
 	public Transaction getTxn() {
-		TransactionConfig txnConfig = new TransactionConfig();
-		txnConfig.setDurability(Durability.COMMIT_NO_SYNC);
-		return this.env.beginTransaction(null, txnConfig);
+		return this.env.beginTransaction(null, this.txnConf);
 	}
 	
 	public static class DBException extends Exception {

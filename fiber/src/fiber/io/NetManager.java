@@ -8,11 +8,11 @@ import java.util.concurrent.TimeUnit;
 
 public class NetManager extends IOManager {
 
-	private final Map<Short, BeanHandler<?>> handlerStub;
+	private final Map<Integer, BeanHandler<?>> handlerStub;
 
 	private static class BeanCodecFactory extends ProtocolCodec.Factory {
-		final private Map<Short, BeanHandler<?>> handlerStub;
-		public BeanCodecFactory(final Map<Short, BeanHandler<?>> handlerStub) {
+		final private Map<Integer, BeanHandler<?>> handlerStub;
+		public BeanCodecFactory(final Map<Integer, BeanHandler<?>> handlerStub) {
 			this.handlerStub = handlerStub;
 		}
 		@Override
@@ -22,7 +22,7 @@ public class NetManager extends IOManager {
 		
 	}
 	
-	public NetManager(IOPoller e, final Map<Short, BeanHandler<?>> handlerStub) {
+	public NetManager(IOPoller e, final Map<Integer, BeanHandler<?>> handlerStub) {
 		super(e,  new BeanCodecFactory(handlerStub));
 		this.handlerStub = handlerStub;
 	}
@@ -77,7 +77,7 @@ public class NetManager extends IOManager {
 	{
 		assert(rpcbean.getArg() != null);
 		rpcbean.setRequest();
-		final RpcHandler<A, R> fhandler = handler != null ? handler : (RpcHandler<A, R>)this.handlerStub.get(rpcbean.getType());		
+		final RpcHandler<A, R> fhandler = handler != null ? handler : (RpcHandler<A, R>)this.handlerStub.get(rpcbean.type());		
 		rpcbean.setOnClient(fhandler);
 		if(session == null) {
 			NetManager.schedule(new Runnable() {
@@ -112,7 +112,7 @@ public class NetManager extends IOManager {
 	@Override
 	public void onReceiveMessage(final IOSession session, Object message) {
 		final Bean<?> bean = (Bean<?>)message;
-		final BeanHandler<?> handler = this.handlerStub.get(bean.getType());
+		final BeanHandler<?> handler = this.handlerStub.get(bean.type());
 		try {
 			handler.process(session, bean);
 		} catch (Exception e) {

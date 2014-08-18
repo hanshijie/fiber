@@ -10,7 +10,7 @@ import fiber.io.ServerManager;
 
 public class GSServerManager extends ServerManager {
 
-	public GSServerManager(IOPoller e, Map<Short, BeanHandler<?>> handlerStub) {
+	public GSServerManager(IOPoller e, Map<Integer, BeanHandler<?>> handlerStub) {
 		super(e, handlerStub);
 	}
 	

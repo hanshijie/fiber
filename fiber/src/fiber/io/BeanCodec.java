@@ -5,14 +5,14 @@ import java.util.Map;
 import fiber.bean.AllBeans;
 
 public final class BeanCodec extends ProtocolCodec {
-	private final Map<Short, BeanHandler<?>> handlerStub;
-	public BeanCodec(final Map<Short, BeanHandler<?>> handlerStub) {	
+	private final Map<Integer, BeanHandler<?>> handlerStub;
+	public BeanCodec(final Map<Integer, BeanHandler<?>> handlerStub) {	
 		this.handlerStub = handlerStub;
 	}
 
 	@Override
 	public void decode(final IOSession session, OctetsStream is) {
-		final Map<Short, Bean<?>> beanStub = AllBeans.get();
+		final Map<Integer, Bean<?>> beanStub = AllBeans.get();
 		int step = 0;
 		int lastHead = 0;
 		//Log.fatal(is.toOctets().dump().toString());
@@ -20,7 +20,7 @@ public final class BeanCodec extends ProtocolCodec {
 			while(!is.empty()) {
 				step = 0;
 				lastHead = is.getHead();
-				short type = (short) is.unmarshalUInt();
+				int type =  is.unmarshalUInt();
 				int size = is.unmarshalUInt();
 				
 				step = 1;
@@ -36,9 +36,9 @@ public final class BeanCodec extends ProtocolCodec {
 					session.close();
 					return;
 				}
-				if(size > bean.getMaxSize()) {
+				if(size > bean.maxsize()) {
 					Log.err("[session-%d] bean<%s> type:%d size:%d exceed maxsize:%d",
-						session.getId(), bean.getClass().getSimpleName(), type, size, bean.getMaxSize());
+						session.getId(), bean.getClass().getSimpleName(), type, size, bean.maxsize());
 					session.close();
 					return;
 				}
@@ -93,7 +93,7 @@ public final class BeanCodec extends ProtocolCodec {
 		os.marshal(bean);
 		int end = os.getTail();
 		int bodysize = end - HEADER_MAX_SIZE;
-		short type = bean.getType();
+		int type = bean.type();
 		int start = HEADER_MAX_SIZE - OctetsStream.marshalUIntLen(bodysize) - OctetsStream.marshalUIntLen(type);
 		os.setTail(start);
 		os.marshalUInt(type);

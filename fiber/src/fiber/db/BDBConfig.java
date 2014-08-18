@@ -9,13 +9,15 @@ public class BDBConfig {
 	private String envRoot;
 	private Map<Integer, String> databases;
 	private long cacheSize;
-	private Durability durability;
+	private Durability envDurability;
+	private Durability txnDurability;
 	
 	public BDBConfig() {
 		this.envRoot = "";
 		this.databases = new TreeMap<Integer, String>();
 		this.cacheSize = 0;
-		this.durability = Durability.COMMIT_WRITE_NO_SYNC;
+		this.envDurability = Durability.COMMIT_WRITE_NO_SYNC;
+		this.txnDurability = Durability.COMMIT_WRITE_NO_SYNC;
 	}
 
 	public final String getEnvRoot() {
@@ -46,13 +48,23 @@ public class BDBConfig {
 		this.cacheSize = cacheSize;
 	}
 
-	public final Durability getDurability() {
-		return durability;
+	public final Durability getEnvDurability() {
+		return envDurability;
 	}
 
-	public final void setDurability(Durability durability) {
-		this.durability = durability;
+	public final void setEnvDurability(Durability durability) {
+		this.envDurability = durability;
 	}
+
+	public final Durability getTxnDurability() {
+		return txnDurability;
+	}
+
+	public final void setTxnDurability(Durability txnDurability) {
+		this.txnDurability = txnDurability;
+	}
+	
+	
 	
 	
 

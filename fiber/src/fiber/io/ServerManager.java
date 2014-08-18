@@ -5,7 +5,7 @@ import java.util.Map;
 
 public class ServerManager extends NetManager {
 
-	public ServerManager(IOPoller e, Map<Short, BeanHandler<?>> handlerStub) {
+	public ServerManager(IOPoller e, Map<Integer, BeanHandler<?>> handlerStub) {
 		super(e, handlerStub);
 	}
 	

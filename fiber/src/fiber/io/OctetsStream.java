@@ -687,6 +687,11 @@ public final class OctetsStream {
 			}
 		}
 	}
+	
+	public int unmarshalInteger() throws MarshalException
+	{
+		return unmarshalInt();
+	}
 
 	public long unmarshalLong() throws MarshalException
 	{

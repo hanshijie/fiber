@@ -6,7 +6,7 @@ import java.util.Map;
 public class ClientManager extends NetManager {
 	private boolean reconn;
 	private int backoff;
-	public ClientManager(IOPoller e, Map<Short, BeanHandler<?>> handlerStub) {
+	public ClientManager(IOPoller e, Map<Integer, BeanHandler<?>> handlerStub) {
 		super(e, handlerStub);
 		this.onlysession = null;
 		this.reconn = true;

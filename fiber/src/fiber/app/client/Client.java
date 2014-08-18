@@ -26,7 +26,7 @@ public class Client {
 			final int TASK_NUM = Integer.parseInt(args[3]);
 			
 			final IOPoller poller = new IOPoller(1);
-			final Map<Short, BeanHandler<?>> handlerStub = AllHandlers.get();
+			final Map<Integer, BeanHandler<?>> handlerStub = AllHandlers.get();
 
 			ArrayList<ClientManager> clients = new ArrayList<ClientManager>();
 			for(int i = 0 ; i < CONNECT_NUM ; i++) {
