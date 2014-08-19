@@ -26,15 +26,14 @@ public final class TestType implements Bean<TestType>
 	TestBean v19;
 
 
-	public TestType()
-	{
+	public TestType() {
 		this.v1 = false;
 		this.v2 = 0;
 		this.v3 = 0;
 		this.v4 = 0;
 		this.v5 = 0;
-		this.v6 = 0.0f;
-		this.v7 = 0.0;
+		this.v6 = 0;
+		this.v7 = 0;
 		this.v8 = Octets.EMPTY;
 		this.v9 = "";
 		this.v10 = new ArrayList<Boolean>();
@@ -46,8 +45,7 @@ public final class TestType implements Bean<TestType>
 
 	}
 
-	public TestType (boolean v1, byte v2, short v3, int v4, long v5, float v6, double v7, Octets v8, String v9, ArrayList<Boolean> v10, HashSet<Long> v13, TreeSet<Float> v14, HashMap<Long, String> v16, TreeMap<TestBean, Boolean> v17, TestBean v19)
-	{
+	public TestType (boolean v1, byte v2, short v3, int v4, long v5, float v6, double v7, Octets v8, String v9, ArrayList<Boolean> v10, HashSet<Long> v13, TreeSet<Float> v14, HashMap<Long, String> v16, TreeMap<TestBean, Boolean> v17, TestBean v19) {
 		this.v1 = v1;
 		this.v2 = v2;
 		this.v3 = v3;

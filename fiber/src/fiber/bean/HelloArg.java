@@ -11,14 +11,12 @@ public final class HelloArg implements Bean<HelloArg>
 	boolean v1;
 
 
-	public HelloArg()
-	{
+	public HelloArg() {
 		this.v1 = false;
 
 	}
 
-	public HelloArg (boolean v1)
-	{
+	public HelloArg (boolean v1) {
 		this.v1 = v1;
 
 	}

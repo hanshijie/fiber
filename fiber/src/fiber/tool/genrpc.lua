@@ -13,9 +13,20 @@ local root = root or "../.."
 local bean_path = bean_path or "fiber/bean"
 local handler_path = handler_path or "fiber/handler"
 local helperClass = "_"
+local namespace = namespace or "fiber"
 
-namespace = "fiber"
-local namespace = namespace
+local allbeans = {}
+local allhandlers = {}
+local beantypes = {}
+local helptypes = {}
+local typeclass = {}
+
+local context = {
+	bean = nil,  	-- current bean
+	var = nil, 		-- current variable
+	handler = nil, 	-- current handler
+}
+
 
 local template_bean = [=[
 package fiber.bean;
@@ -30,13 +41,11 @@ public final class $(bean.name) implements Bean<$(bean.name)>
 
 $(bean_define)
 
-	public $(bean.name)()
-	{
+	public $(bean.name)() {
 $(bean_default_init)
 	}
 
-	public $(bean.name) ($(bean_arg))
-	{
+	public $(bean.name) ($(bean_arg)) {
 $(bean_init)
 	}
 	
@@ -117,8 +126,7 @@ package fiber.bean;
 
 import fiber.io.*;
 
-public final class $(bean.name) extends RpcBean<$(bean.arg), $(bean.res)>
-{
+public final class $(bean.name) extends RpcBean<$(bean.arg), $(bean.res)> {
 	public  static final $(bean.name) STUB = new $(bean.name)();
 	public $(bean.name)() {}
 	public $(bean.name)($(bean.arg) a) { arg = a; }
@@ -139,15 +147,13 @@ import java.util.Map;
 import java.util.HashMap;
 import fiber.io.Bean;
 
-public final class AllBeans
-{
+public final class AllBeans {
 	private final static Map<Integer, Bean<?>> allbeans = new HashMap<Integer, Bean<?>>();
 	static {	
 $(beans_stub)
 	}
 
-	public static Map<Integer, Bean<?>> get()
-	{
+	public static Map<Integer, Bean<?>> get() {
 		return allbeans;
 	}
 }
@@ -160,15 +166,13 @@ import java.util.Map;
 import java.util.HashMap;
 import fiber.io.BeanHandler;
 
-public final class AllHandlers
-{
+public final class AllHandlers {
 	private final static Map<Integer, BeanHandler<?>> allhandlers = new HashMap<Integer, BeanHandler<?>>();
 	static {
 $(handlers_stub)
 	}
 
-	public static Map<Integer, BeanHandler<?>> get()
-	{
+	public static Map<Integer, BeanHandler<?>> get() {
 		return allhandlers;
 	}
 }
@@ -180,11 +184,9 @@ package fiber.handler.$(handler.path);
 import fiber.bean.$(bean.name);
 import fiber.io.*;
 
-public class $(bean.name)Handler extends BeanHandler<$(bean.name)>
-{
+public class $(bean.name)Handler extends BeanHandler<$(bean.name)> {
 	@Override
-	public void onProcess(final IOSession session, final $(bean.name) arg)
-	{
+	public void onProcess(final IOSession session, final $(bean.name) arg) {
 	}
 }
 ]=]
@@ -196,22 +198,18 @@ import fiber.io.*;
 import fiber.bean.$(bean.arg);
 import fiber.bean.$(bean.res);
 
-public class $(bean.name)Handler extends RpcHandler<$(bean.arg), $(bean.res)>
-{
+public class $(bean.name)Handler extends RpcHandler<$(bean.arg), $(bean.res)> {
 	@Override
-	public boolean onServer(IOSession session, $(bean.arg) arg, $(bean.res) res)
-	{
+	public boolean onServer(IOSession session, $(bean.arg) arg, $(bean.res) res) {
 		return true;
 	}
 
 	@Override
-	public void onClient(IOSession session, $(bean.arg) arg, $(bean.res) res)
-	{
+	public void onClient(IOSession session, $(bean.arg) arg, $(bean.res) res) {
 	}
 
 	@Override
-	public void onTimeout(IOSession session, $(bean.arg) arg)
-	{
+	public void onTimeout(IOSession session, $(bean.arg) arg) {
 	}
 }
 ]=]
@@ -261,45 +259,22 @@ local function eval(name, ctx)
 	end
 end
 
-local function get_dir(path)
-	for i = #path, 1 , -1 do
-		if path:sub(i, i) == "/" then 
-			return path:sub(1, i - 1)
-		end
-	end
-	return path
-end
-
---[[
-local lfs = require "lfs"
-local function check_create_path(path)
-	local dir = get_dir(path)
-	local ret, msg = lfs.mkdir(dir)
-	if not ret then
-		err("create:", dir, "fail. reason:", msg)
-	end
-end
---]]
-
-local function gen_save(template, path, ctx)
+local function gen_save(template, path, ctx, noreplace)
 	local content = template:gsub("%$%((.-)%)", function (s) 
 		return eval(s, ctx)
 	end)
 	--check_create_path(path)
 	local outf = io.open(path)
+	if noreplace and outf then return end
 	if not outf or outf:read("*a") ~= content then
 		if outf then outf:close() end
 		outf = io.open(path, "w")
-		if not outf then err("file:%s open fail! please create parent dir first!!!", path) end
+		if not outf then err("file:%s open fail! please create parent directory first!!!", path) end
 		outf:write(content)
 		outf:close()
-		print("save to file:", path)
+		print("save :", path)
 	end
-
-	--print(content)
 end
-
-
 
 local rawtype2objectmap = {
 	bool = "Boolean",
@@ -312,105 +287,162 @@ local rawtype2objectmap = {
 	binary = "Octets",
 	string = "String",
 }
-function get_container_keytype(keytype)
+
+local function get_container_keytype(keytype)
 	return rawtype2objectmap[keytype] or keytype
 end
 
-local basetype_processor = {
-	bool = function (var) 
-		var.finaltype = "boolean"
-		var.default = "false"
-	end,
-	byte = function (var)
-		var.finaltype = "byte"
-		var.default = 0
-	end,
-	short = function (var)
-		var.finaltype = "short"
-		var.default = 0
-	end,
-	int = function (var)
-		var.finaltype = "int"
-		var.default = 0
-	end,	
-	long = function (var)
-		var.finaltype = "long"
-		var.default = 0
-	end,	
-	float = function (var)
-		var.finaltype = "float"
-		var.default = "0.0f"
-	end,
-	double = function (var)
-		var.finaltype = "double"
-		var.default = "0.0"
-	end,
-	binary = function (var)
-		var.finaltype = "Octets"
-		var.default = "Octets.EMPTY"
-	end,
-	string = function (var)
-		var.finaltype = "String"
-		var.default = "\"\""
-	end,
-	vector = function (var)
-		var.value = var.type:gmatch("<(%w+)>")()
-		var.finalvalue = get_container_keytype(var.value)
-		var.finaltype = string.format("ArrayList<%s>", var.finalvalue)
-		var.default = string.format("new %s()", var.finaltype)
-	end,
-	hashset = function (var)
-		var.value = var.type:gmatch("<(%w+)>")()
-		var.finalvalue = get_container_keytype(var.value)
-		var.finaltype = string.format("HashSet<%s>", var.finalvalue)
-		var.default = string.format("new %s()", var.finaltype)
-	end,
-	treeset = function (var)
-		var.value = var.type:gmatch("<(%w+)>")()
-		var.finalvalue = get_container_keytype(var.value)
-		var.finaltype = string.format("TreeSet<%s>", var.finalvalue)
-		var.default = string.format("new %s()", var.finaltype)
-	end,
-	hashmap = function (var)
-		var.key, var.value = var.type:gmatch("<(%w+),(%w+)>")()
-		var.finalkey = get_container_keytype(var.key)
-		var.finalvalue = get_container_keytype(var.value)
-		var.finaltype = string.format("HashMap<%s, %s>", var.finalkey, var.finalvalue)
-		var.default = string.format("new %s()", var.finaltype)
-	end,
-	treemap = function (var)
-		var.key, var.value = var.type:gmatch("<(%w+),(%w+)>")()
-		var.finalkey = get_container_keytype(var.key)
-		var.finalvalue = get_container_keytype(var.value)
-		var.finaltype = string.format("TreeMap<%s, %s>", var.finalkey, var.finalvalue)
-		var.default = string.format("new %s()", var.finaltype)
-	end,
-	bean = function(var)
-		var.finaltype = var.type
-		var.default = string.format("new %s()", var.type)
-	end,
-}
+local function merge(a, b)
+	local c = {}
+	for k, v in pairs(a) do
+		c[k] = v
+	end
+	for k, v in pairs(b) do
+		c[k] = v
+	end
+	return c
+end
 
 function get_basetype(type)
 	local pos = type:find("<", 1, true)
-	return pos and type:sub(1, pos - 1) or (basetype_processor[type] and type or "bean")
+	return pos and type:sub(1, pos - 1) or (typeclass[type] and type or "bean")
 end
 	
 function get_sidtype(type)
 	return type:gsub(">", ""):gsub("[^%w]", "_")
 end
 
-function get_fulltype(type)
-	local basetype = get_basetype(type)
-	local realbasetype = basetypemap[basetype] or basetype
+function get_objtype(rawtype)
+	return get_container_keytype(rawtype)
 end
 
-local allbeans = {}
-local allhandlers = {}
+local containtypes = { vector = true, hashset = true, treeset = true, hashmap = true, treemap = true}
+local function is_container(type)
+	return containtypes[type]
+end
 
-local beantypes = {}
 
-local helptypes = {}
+local tc = typeclass
+
+tc.bool = {
+	sid = function (var) return get_sidtype(var.type) end,
+	basetype = function (var) return var.type end,
+	finaltype = function () return "boolean" end,
+	default = function () return "false" end,
+	
+	clone = function (var, tc) return string.format("\tpublic static %s clone_%s(%s x) { return x; }", var.finaltype, var.sid, var.finaltype)  end,
+	hashcode = function (var, tc) return string.format("\tpublic static int hashcode_%s(%s x) { return x ? 1 : 0; }", var.sid, var.finaltype) end,
+	equals = function(var, tc) return string.format("\tpublic static boolean equals_%s(%s x, %s y) { return x == y; }", var.sid, var.finaltype, var.finaltype) end,
+	compareto = function(var, tc) return string.format("\tpublic static int compareto_%s(%s x, %s y) { return x == y ? 0 : (x ? -1 : 1); }", var.sid, var.finaltype, var.finaltype) end,
+	tostring = function(var, tc) return string.format("\tpublic static String tostring_%s(%s x) { return %s.toString(x); }", var.sid, var.finaltype, get_objtype(var.type)) end,
+	marshal = function(var, tc) return string.format("\tpublic static void marshal_%s(OctetsStream os, %s x) { os.marshal(x); }", var.sid, var.finaltype) end,
+	unmarshal = function(var, tc) return string.format("\tpublic static %s unmarshal_%s(OctetsStream os) throws MarshalException { return os.unmarshal%s(); }", var.finaltype, var.sid, get_objtype(var.type)) end,
+	marshalscheme = function(var, tc) return string.format("\tpublic static void marshalscheme_%s(OctetsStream os, %s x) { os.marshal(x); }", var.sid, var.finaltype) end,
+	unmarshalscheme = function(var, tc) return string.format("\tpublic static %s unmarshalscheme_%s(OctetsStream os) throws MarshalException { return os.unmarshal%s(); }", var.finaltype, var.sid, get_objtype(var.type)) end,
+}
+
+tc.byte = merge(tc.bool, {
+	finaltype = function (var) return var.type end,
+	default = function(var) return 0 end,
+	
+	hashcode = function (var, tc) return string.format("\tpublic static int hashcode_%s(%s x) { return x; }", var.sid, var.finaltype) end,
+	compareto = function(var, tc) return string.format("\tpublic static int compareto_%s(%s x, %s y) { return x - y; }", var.sid, var.finaltype, var.finaltype) end,
+})
+
+tc.short = tc.byte
+
+tc.int = tc.byte
+
+tc.long = merge(tc.byte, {
+	hashcode = function (var, tc) return string.format("\tpublic static int hashcode_%s(%s x) { return ((%s)x).hashCode(); }", var.sid, var.finaltype, get_objtype(var.type)) end,
+	compareto = function(var, tc) return string.format("\tpublic static int compareto_%s(%s x, %s y) { return Long.signum(x - y); }", var.sid, var.finaltype, var.finaltype) end,	
+})
+
+tc.float = merge(tc.long, {
+	compareto = function(var, tc) return string.format("\tpublic static int compareto_%s(%s x, %s y) { return %s.compare(x, y); }", var.sid, var.finaltype, var.finaltype, get_objtype(var.type)) end,
+})
+
+tc.double = merge(tc.float, {
+
+})
+
+tc.binary = merge(tc.byte, {
+	finaltype = function () return "Octets" end,
+	default = function() return "Octets.EMPTY" end,
+	
+	hashcode = function (var, tc) return string.format("\tpublic static int hashcode_%s(%s x) { return x.hashCode(); }", var.sid, var.finaltype) end,
+	equals = function(var, tc) return string.format("\tpublic static boolean equals_%s(%s x, %s y) { return x.equals(y); }", var.sid, var.finaltype, var.finaltype) end,
+	compareto = function(var, tc) return string.format("\tpublic static int compareto_%s(%s x, %s y) { return x.compareTo(y); }", var.sid, var.finaltype, var.finaltype) end,
+	tostring = function(var, tc) return string.format("\tpublic static String tostring_%s(%s x) { return x.toString(); }", var.sid, var.finaltype) end,	
+})
+
+tc.string = merge(tc.binary, {
+	finaltype = function () return "String" end,
+	default = function () return "\"\"" end,
+	
+	tostring = function(var, tc) return string.format("\tpublic static String tostring_%s(%s x) { return x; }", var.sid, var.finaltype) end,
+})
+
+tc.vector = merge(tc.binary, {
+	basetype = function (var) return var.type:sub(1, var.type:find("<") - 1) end,
+	finalbasetype = "ArrayList",
+	value = function (var) return var.type:gmatch("<(%w+)>")() end,
+	finalvalue = function (var) return get_container_keytype(var.value) end,
+	finaltype = function (var, tc) return string.format("%s<%s>", tc.finalbasetype, var.finalvalue) end,
+	default = function (var) return string.format("new %s()", var.finaltype) end,
+
+	clone = function (var, tc) return string.format("\tpublic static %s clone_%s(%s x) { %s y = new %s(); for(%s e : x) { y.add(clone_%s(e)); } return y; }", var.finaltype, var.sid, var.finaltype, var.finaltype, var.finaltype, var.finalvalue, get_sidtype(var.value))  end,
+	hashcode = function (var, tc) return string.format("\tpublic static int hashcode_%s(%s x) { int h = 0x9e3779b1 * x.size(); for(%s e : x) h = h * 31 + hashcode_%s(e); return h; }", var.sid, var.finaltype, var.finalvalue, get_sidtype(var.value)) end,
+	compareto = function(var, tc) return string.format("\tpublic static int compareto_%s(%s x, %s y) { return 0; }", var.sid, var.finaltype, var.finaltype) end,
+	marshal = function(var, tc) return string.format("\tpublic static void marshal_%s(OctetsStream os, %s x) { os.marshalUInt(x.size()); for(%s e : x) marshal_%s(os, e); }", var.sid, var.finaltype, var.finalvalue, get_sidtype(var.value)) end,
+	unmarshal = function(var, tc) return string.format("\tpublic static %s unmarshal_%s(OctetsStream os) throws MarshalException { %s y = new %s(); for(int n = os.unmarshalUInt() ; n > 0 ; n--) y.add(unmarshal_%s(os)); return y; }", var.finaltype, var.sid, var.finaltype, var.finaltype, get_sidtype(var.value)) end,
+	marshalscheme = function(var, tc) return string.format("\tpublic static void marshalscheme_%s(OctetsStream os, %s x) { os.marshalUInt(x.size()); for(%s e : x) marshalscheme_%s(os, e); }", var.sid, var.finaltype, var.finalvalue, get_sidtype(var.value)) end,
+	unmarshalscheme = function(var, tc) return string.format("\tpublic static %s unmarshalscheme_%s(OctetsStream os) throws MarshalException { %s y = new %s(); for(int n = os.unmarshalUInt() ; n > 0 ; n--) y.add(unmarshalscheme_%s(os)); return y; }", var.finaltype, var.sid, var.finaltype, var.finaltype, get_sidtype(var.value)) end,
+})
+
+tc.hashset = merge(tc.vector, {
+	finalbasetype = "HashSet",
+})
+
+tc.treeset = merge(tc.vector, {
+	finalbasetype = "TreeSet",
+})
+
+tc.hashmap = merge(tc.treeset, {
+	finalbasetype = "HashMap",
+	key = function (var) return var.type:gmatch("<(%w+),(%w+)>")() end,
+	value = function (var)  _, v = var.type:gmatch("<(%w+),(%w+)>")()  return v end,
+	finalkey = function (var) return get_container_keytype(var.key) end,
+	finalvalue = function (var) return get_container_keytype(var.value) end,
+	finaltype = function (var, tc) return string.format("%s<%s, %s>", tc.finalbasetype, var.finalkey, var.finalvalue) end,
+	
+	clone = function (var, tc) return string.format("\tpublic static %s clone_%s(%s x) { %s y = new %s(); for(Map.Entry<%s, %s> e : x.entrySet()) { y.put(clone_%s(e.getKey()), clone_%s(e.getValue())); } return y; }", var.finaltype, var.sid, var.finaltype, var.finaltype, var.finaltype, var.finalkey, var.finalvalue, get_sidtype(var.key), get_sidtype(var.value))  end,
+	hashcode = function (var, tc) return string.format("\tpublic static int hashcode_%s(%s x) { int h = 0x9e3779b1 * x.size(); for(Map.Entry<%s, %s> e : x.entrySet()) h = h * 31 + hashcode_%s(e.getKey()) + hashcode_%s(e.getValue()); return h; }", var.sid, var.finaltype, var.finalkey, var.finalvalue, get_sidtype(var.key), get_sidtype(var.value)) end,
+	marshal = function(var, tc) return string.format("\tpublic static void marshal_%s(OctetsStream os, %s x) { os.marshalUInt(x.size()); for(Map.Entry<%s, %s> e : x.entrySet()) { marshal_%s(os, e.getKey()); marshal_%s(os, e.getValue()); } }", var.sid, var.finaltype, var.finalkey, var.finalvalue, get_sidtype(var.key), get_sidtype(var.value)) end,
+	unmarshal = function(var, tc) return string.format("\tpublic static %s unmarshal_%s(OctetsStream os) throws MarshalException { %s y = new %s(); for(int n = os.unmarshalUInt() ; n > 0 ; n--) y.put(unmarshal_%s(os), unmarshal_%s(os)); return y; }", var.finaltype, var.sid, var.finaltype, var.finaltype, get_sidtype(var.key), get_sidtype(var.value)) end,
+	marshalscheme = function(var, tc) return string.format("\tpublic static void marshalscheme_%s(OctetsStream os, %s x) { os.marshalUInt(x.size()); for(Map.Entry<%s, %s> e : x.entrySet()) { marshal_%s(os, e.getKey()); marshalscheme_%s(os, e.getValue()); } }", var.sid, var.finaltype, var.finalkey, var.finalvalue, get_sidtype(var.key), get_sidtype(var.value)) end,
+	unmarshalscheme = function(var, tc) return string.format("\tpublic static %s unmarshalscheme_%s(OctetsStream os) throws MarshalException { %s y = new %s(); for(int n = os.unmarshalUInt() ; n > 0 ; n--) y.put(unmarshal_%s(os), unmarshalscheme_%s(os)); return y; }", var.finaltype, var.sid, var.finaltype, var.finaltype, get_sidtype(var.key), get_sidtype(var.value)) end,
+})
+
+tc.treemap = merge(tc.hashmap, {
+	finalbasetype = "TreeMap",
+})
+
+tc.bean = merge(tc.binary, {
+	basetype = function (var) return "bean" end,
+	finaltype = function (var) return var.type end,
+	default = function(var) return string.format("new %s()", var.type) end,
+
+	clone = function (var, tc) return string.format("\tpublic static %s clone_%s(%s x) { return x.clone(); }", var.finaltype, var.sid, var.finaltype)  end,
+	hashcode = function (var, tc) return string.format("\tpublic static int hashcode_%s(%s x) { return x.hashCode(); }", var.sid, var.finaltype) end,
+	equals = function(var, tc) return string.format("\tpublic static boolean equals_%s(%s x, %s y) { return x.equals(y); }", var.sid, var.finaltype, var.finaltype) end,
+	compareto = function(var, tc) return string.format("\tpublic static int compareto_%s(%s x, %s y) { return x.compareTo(y); }", var.sid, var.finaltype, var.finaltype) end,
+	marshal = function(var, tc) return string.format("\tpublic static void marshal_%s(OctetsStream os, %s x) { x.marshal(os); }", var.sid, var.finaltype) end,
+	unmarshal = function(var, tc) return string.format("\tpublic static %s unmarshal_%s(OctetsStream os) throws MarshalException { %s o = new %s(); o.unmarshal(os); return o; }", var.finaltype, var.sid, var.finaltype, var.finaltype) end,
+	marshalscheme = function(var, tc) return string.format("\tpublic static void marshalscheme_%s(OctetsStream os, %s x) { x.marshalScheme(os); }", var.sid, var.finaltype) end,
+	unmarshalscheme = function(var, tc) return string.format("\tpublic static %s unmarshalscheme_%s(OctetsStream os) throws MarshalException { %s o = new %s(); o.unmarshalScheme(os); return o; }", var.finaltype, var.sid, var.finaltype, var.finaltype) end,
+})
+
 function bean(b) 
 	if allbeans[b.name] then
 		err("bean %s dumplicate!", b.name)
@@ -422,7 +454,7 @@ function bean(b)
 	allbeans[b.name] = b
 	if b.handlers then
 		for _, handler in ipairs(b.handlers) do
-			--print(handler)
+			if not allhandlers[handler] then err("unknown handler:%s", handler) end
 			table.insert(allhandlers[handler].beans, b)
 		end
 	end
@@ -431,8 +463,10 @@ function bean(b)
 	for i, var in ipairs(b) do
 		var.type = var.type:gsub("%s", "")
 		var.basetype = get_basetype(var.type)
-		basetype_processor[var.basetype](var)
-		var.sid = get_sidtype(var.type)
+		local ttype = typeclass[var.basetype]
+		for _, field in ipairs({"sid", "basetype", "key", "value", "finalkey", "finalvalue", "finaltype", "default", }) do
+			var[field] = ttype[field] and ttype[field](var, ttype)
+		end
 		helptypes[var.sid] = var
 
 		
@@ -477,12 +511,10 @@ function rpc(r)
 	r.res = r.res and r.res or r.name .. "Res"
 end
 
-
 function handler(h)
 	if allhandlers[h.name] then
 		err("handler %s dumplicate", h.name)
 	end
---	h.path = "fiber.handler." .. h.path
 	h.beans = {}
 	allhandlers[h.name] = h
 end
@@ -493,27 +525,7 @@ end
 
 dofile("rpcalls.lua")
 
-local containtypes = { vector = true, hashset = true, treeset = true, hashmap = true, treemap = true}
-local function is_container(type)
-	return containtypes[type]
-end
 
-local context = {
-	bean = nil,  	-- current bean
-	var = nil, 		-- current variable
-	handler = nil, 	-- current handler
-	
-	bean_import = function (ctx)
-		local s = ""
-		for _, var in ipairs(ctx.bean) do
-			if is_container(var.basetype) then
-				s = s .. "import java.util.*;\n"
-				break
-			end
-		end
-		return s
-	end,
-}
 
 function make_var_fun(name)
 	--print(name)
@@ -538,8 +550,6 @@ local simple_var_funs = {
 	"bean_tostring",
 	"bean_marshal",
 	"bean_unmarshal",
-	--"bean_marshalscheme",
-	--"bean_unmarshalscheme",
 	"bean_getter_setter",
 }
 
@@ -548,46 +558,58 @@ for _, fun in pairs(simple_var_funs) do
 	make_var_fun(fun)
 end
 
-context["bean_marshalscheme"] = function(ctx) 
-		local s = "\t\tos.marshalUInt(" .. #ctx.bean .. ");\n"
-		for i = #ctx.bean, 1, -1 do
-			local var = ctx.bean[i]
-			s = s .. "\t\t" .. var.bean_marshalscheme .. "\n"
-		end
-		return s
-	end
-
-
-context["bean_unmarshalscheme"] = function(ctx) 
-		local s = "\t\tswitch(os.unmarshalUInt()) {\n"
-		for i = #ctx.bean, 1, -1 do
-			local var = ctx.bean[i]
-			s = s .. string.format("\t\t\tcase %d : %s\n", i, var.bean_marshalscheme)
-		end
-		s = s .. "\t\t\tcase 0 : break;\n"
-		s = s .. "\t\t\tdefault: throw MarshalException.createEOF(false); \n"
-		s = s .. "\t\t}\n"
-		return s
-	end
 	
-context["beans_stub"] = function(ctx) 
+context.bean_import = function (ctx)
 	local s = ""
-	for _, bean in pairs(allbeans) do
-		s = s .. string.format("\t\tallbeans.put(%s, %s.STUB);\n", bean.type, bean.name)
+	for _, var in ipairs(ctx.bean) do
+		if is_container(var.basetype) then
+			s = s .. "import java.util.*;\n"
+			break
+		end
 	end
 	return s
 end
 
-context["handlers_stub"] = function(ctx)
-	local s = ""
+context.bean_marshalscheme = function(ctx) 
+	local s = "\t\tos.marshalUInt(" .. #ctx.bean .. ");\n"
+	for i = #ctx.bean, 1, -1 do
+		local var = ctx.bean[i]
+		s = s .. "\t\t" .. var.bean_marshalscheme .. "\n"
+	end
+	return s
+end
+
+
+context.bean_unmarshalscheme = function(ctx) 
+	local s = "\t\tswitch(os.unmarshalUInt()) {\n"
+	for i = #ctx.bean, 1, -1 do
+		local var = ctx.bean[i]
+		s = s .. string.format("\t\t\tcase %d : %s\n", i, var.bean_marshalscheme)
+	end
+	s = s .. "\t\t\tcase 0 : break;\n"
+	s = s .. "\t\t\tdefault: throw MarshalException.createEOF(false); \n"
+	s = s .. "\t\t}\n"
+	return s
+end
+	
+context.beans_stub = function(ctx) 
+	local s = {}
+	for _, bean in pairs(allbeans) do
+		table.insert(s, string.format("\t\tallbeans.put(%s, %s.STUB);", bean.type, bean.name))
+	end
+	return table.concat(s, "\n")
+end
+
+context.handlers_stub = function(ctx)
+	local s = {}
 	local handler = ctx.handler
 	for _, bean in pairs(handler.beans) do
-		s = s .. string.format("\t\tallhandlers.put(%s, new %sHandler());\n", bean.type, bean.name)
+		table.insert(s, string.format("\t\tallhandlers.put(%s, new %sHandler());", bean.type, bean.name))
 	end
-	return s
+	return table.concat(s, "\n")
 end
 
-context["helper_imports"] = function(ctx)
+context.helper_imports = function(ctx)
 	local imports = {
 		"fiber.io.*",
 		"java.util.*",
@@ -595,266 +617,18 @@ context["helper_imports"] = function(ctx)
 	return "import " .. table.concat(imports, ";\nimport ") .. ";\n"
 end
 
-local function get_objtype(rawtype)
-	return get_container_keytype(rawtype)
-end
-
-local helper_processor = {
-	bool = function (var, c)
-		local objtype = get_objtype(var.type)
-		table.insert(c, string.format("\tpublic static %s clone_%s(%s x) { return x; }", var.finaltype, var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static int hashcode_%s(%s x) { return x ? 1 : 0; }", var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static boolean equals_%s(%s x, %s y) { return x == y; }", var.sid, var.finaltype, var.finaltype))
-		table.insert(c, string.format("\tpublic static int compareto_%s(%s x, %s y) { return x == y ? 0 : (x ? -1 : 1); }", var.sid, var.finaltype, var.finaltype))
-		table.insert(c, string.format("\tpublic static String tostring_%s(%s x) { return %s.toString(x); }", var.sid, var.finaltype, objtype))
-		table.insert(c, string.format("\tpublic static void marshal_%s(OctetsStream os, %s x) { os.marshal(x); }", var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static %s unmarshal_%s(OctetsStream os) throws MarshalException { return os.unmarshal%s(); }", var.finaltype, var.sid, objtype))
-		table.insert(c, string.format("\tpublic static void marshalscheme_%s(OctetsStream os, %s x) { os.marshal(x); }", var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static %s unmarshalscheme_%s(OctetsStream os) throws MarshalException { return os.unmarshal%s(); }", var.finaltype, var.sid, objtype))
-		table.insert(c, "")
-	end,
-	byte = function (var, c)
-		local objtype = get_objtype(var.type)
-		table.insert(c, string.format("\tpublic static %s clone_%s(%s x) { return x; }", var.finaltype, var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static int hashcode_%s(%s x) { return x; }", var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static boolean equals_%s(%s x, %s y) { return x == y; }", var.sid, var.finaltype, var.finaltype))
-		table.insert(c, string.format("\tpublic static int compareto_%s(%s x, %s y) { return x - y; }", var.sid, var.finaltype, var.finaltype))
-		table.insert(c, string.format("\tpublic static String tostring_%s(%s x) { return %s.toString(x); }", var.sid, var.finaltype, objtype))
-		table.insert(c, string.format("\tpublic static void marshal_%s(OctetsStream os, %s x) { os.marshal(x); }", var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static %s unmarshal_%s(OctetsStream os) throws MarshalException { return os.unmarshal%s(); }", var.finaltype, var.sid, objtype))
-		table.insert(c, string.format("\tpublic static void marshalscheme_%s(OctetsStream os, %s x) { os.marshal(x); }", var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static %s unmarshalscheme_%s(OctetsStream os) throws MarshalException { return os.unmarshal%s(); }", var.finaltype, var.sid, objtype))
-		table.insert(c, "")
-	end,
-	short = function (var, c)
-		local objtype = get_objtype(var.type)
-		table.insert(c, string.format("\tpublic static %s clone_%s(%s x) { return x; }", var.finaltype, var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static int hashcode_%s(%s x) { return x; }", var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static boolean equals_%s(%s x, %s y) { return x == y; }", var.sid, var.finaltype, var.finaltype))
-		table.insert(c, string.format("\tpublic static int compareto_%s(%s x, %s y) { return x - y; }", var.sid, var.finaltype, var.finaltype))
-		table.insert(c, string.format("\tpublic static String tostring_%s(%s x) { return %s.toString(x); }", var.sid, var.finaltype, objtype))
-		table.insert(c, string.format("\tpublic static void marshal_%s(OctetsStream os, %s x) { os.marshal(x); }", var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static %s unmarshal_%s(OctetsStream os) throws MarshalException { return os.unmarshal%s(); }", var.finaltype, var.sid, objtype))
-		table.insert(c, string.format("\tpublic static void marshalscheme_%s(OctetsStream os, %s x) { os.marshal(x); }", var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static %s unmarshalscheme_%s(OctetsStream os) throws MarshalException { return os.unmarshal%s(); }", var.finaltype, var.sid, objtype))
-		table.insert(c, "")
-	end,
-	int = function (var, c)
-		local objtype = get_objtype(var.type)
-		table.insert(c, string.format("\tpublic static %s clone_%s(%s x) { return x; }", var.finaltype, var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static int hashcode_%s(%s x) { return x; }", var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static boolean equals_%s(%s x, %s y) { return x == y; }", var.sid, var.finaltype, var.finaltype))
-		table.insert(c, string.format("\tpublic static int compareto_%s(%s x, %s y) { return x - y; }", var.sid, var.finaltype, var.finaltype))
-		table.insert(c, string.format("\tpublic static String tostring_%s(%s x) { return %s.toString(x); }", var.sid, var.finaltype, objtype))
-		table.insert(c, string.format("\tpublic static void marshal_%s(OctetsStream os, %s x) { os.marshal(x); }", var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static %s unmarshal_%s(OctetsStream os) throws MarshalException { return os.unmarshal%s(); }", var.finaltype, var.sid, objtype))
-		table.insert(c, string.format("\tpublic static void marshalscheme_%s(OctetsStream os, %s x) { os.marshal(x); }", var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static %s unmarshalscheme_%s(OctetsStream os) throws MarshalException { return os.unmarshal%s(); }", var.finaltype, var.sid, objtype))
-		table.insert(c, "")
-	end,	
-	long = function (var, c)
-		local objtype = get_objtype(var.type)
-		table.insert(c, string.format("\tpublic static %s clone_%s(%s x) { return x; }", var.finaltype, var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static int hashcode_%s(%s x) { return ((Long)x).hashCode(); }", var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static boolean equals_%s(%s x, %s y) { return x == y; }", var.sid, var.finaltype, var.finaltype))
-		table.insert(c, string.format("\tpublic static int compareto_%s(%s x, %s y) { return Long.signum(x - y); }", var.sid, var.finaltype, var.finaltype))
-		table.insert(c, string.format("\tpublic static String tostring_%s(%s x) { return %s.toString(x); }", var.sid, var.finaltype, objtype))
-		table.insert(c, string.format("\tpublic static void marshal_%s(OctetsStream os, %s x) { os.marshal(x); }", var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static %s unmarshal_%s(OctetsStream os) throws MarshalException { return os.unmarshal%s(); }", var.finaltype, var.sid, objtype))
-		table.insert(c, string.format("\tpublic static void marshalscheme_%s(OctetsStream os, %s x) { os.marshal(x); }", var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static %s unmarshalscheme_%s(OctetsStream os) throws MarshalException { return os.unmarshal%s(); }", var.finaltype, var.sid, objtype))
-		table.insert(c, "")
-	end,	
-	float = function (var, c)
-		local objtype = get_objtype(var.type)
-		table.insert(c, string.format("\tpublic static %s clone_%s(%s x) { return x; }", var.finaltype, var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static int hashcode_%s(%s x) { return ((Float)x).hashCode(); }", var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static boolean equals_%s(%s x, %s y) { return x == y; }", var.sid, var.finaltype, var.finaltype))
-		table.insert(c, string.format("\tpublic static int compareto_%s(%s x, %s y) { return Float.compare(x, y); }", var.sid, var.finaltype, var.finaltype))
-		table.insert(c, string.format("\tpublic static String tostring_%s(%s x) { return %s.toString(x); }", var.sid, var.finaltype, objtype))
-		table.insert(c, string.format("\tpublic static void marshal_%s(OctetsStream os, %s x) { os.marshal(x); }", var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static %s unmarshal_%s(OctetsStream os) throws MarshalException { return os.unmarshal%s(); }", var.finaltype, var.sid, objtype))
-		table.insert(c, string.format("\tpublic static void marshalscheme_%s(OctetsStream os, %s x) { os.marshal(x); }", var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static %s unmarshalscheme_%s(OctetsStream os) throws MarshalException { return os.unmarshal%s(); }", var.finaltype, var.sid, objtype))
-		table.insert(c, "")
-	end,
-	double = function (var, c)
-		local objtype = get_objtype(var.type)
-		table.insert(c, string.format("\tpublic static %s clone_%s(%s x) { return x; }", var.finaltype, var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static int hashcode_%s(%s x) { return ((Double)x).hashCode(); }", var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static boolean equals_%s(%s x, %s y) { return x == y; }", var.sid, var.finaltype, var.finaltype))
-		table.insert(c, string.format("\tpublic static int compareto_%s(%s x, %s y) { return Double.compare(x, y); }", var.sid, var.finaltype, var.finaltype))
-		table.insert(c, string.format("\tpublic static String tostring_%s(%s x) { return %s.toString(x); }", var.sid, var.finaltype, objtype))
-		table.insert(c, string.format("\tpublic static void marshal_%s(OctetsStream os, %s x) { os.marshal(x); }", var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static %s unmarshal_%s(OctetsStream os) throws MarshalException { return os.unmarshal%s(); }", var.finaltype, var.sid, objtype))
-		table.insert(c, string.format("\tpublic static void marshalscheme_%s(OctetsStream os, %s x) { os.marshal(x); }", var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static %s unmarshalscheme_%s(OctetsStream os) throws MarshalException { return os.unmarshal%s(); }", var.finaltype, var.sid, objtype))
-		table.insert(c, "")
-	end,
-	binary = function (var, c)
-		table.insert(c, string.format("\tpublic static %s clone_%s(%s x) { return x.clone(); }", var.finaltype, var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static int hashcode_%s(%s x) { return x.hashCode(); }", var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static boolean equals_%s(%s x, %s y) { return x.equals(y); }", var.sid, var.finaltype, var.finaltype))
-		table.insert(c, string.format("\tpublic static int compareto_%s(%s x, %s y) { return x.compareTo(y); }", var.sid, var.finaltype, var.finaltype))
-		table.insert(c, string.format("\tpublic static String tostring_%s(%s x) { return x.toString(); }", var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static void marshal_%s(OctetsStream os, %s x) { os.marshal(x); }", var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static %s unmarshal_%s(OctetsStream os) throws MarshalException { return os.unmarshalOctets(); }", var.finaltype, var.sid))
-		table.insert(c, string.format("\tpublic static void marshalscheme_%s(OctetsStream os, %s x) { os.marshal(x); }", var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static %s unmarshalscheme_%s(OctetsStream os) throws MarshalException { return os.unmarshalOctets(); }", var.finaltype, var.sid))
-		table.insert(c, "")
-	end,
-	string = function (var, c)
-		table.insert(c, string.format("\tpublic static %s clone_%s(%s x) { return x; }", var.finaltype, var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static int hashcode_%s(%s x) { return x.hashCode(); }", var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static boolean equals_%s(%s x, %s y) { return x.equals(y); }", var.sid, var.finaltype, var.finaltype))
-		table.insert(c, string.format("\tpublic static int compareto_%s(%s x, %s y) { return x.compareTo(y); }", var.sid, var.finaltype, var.finaltype))
-		table.insert(c, string.format("\tpublic static String tostring_%s(%s x) { return x; }", var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static void marshal_%s(OctetsStream os, %s x) { os.marshal(x); }", var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static %s unmarshal_%s(OctetsStream os) throws MarshalException { return os.unmarshalString(); }", var.finaltype, var.sid))
-		table.insert(c, string.format("\tpublic static void marshalscheme_%s(OctetsStream os, %s x) { os.marshal(x); }", var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static %s unmarshalscheme_%s(OctetsStream os) throws MarshalException { return os.unmarshalString(); }", var.finaltype, var.sid))
-		table.insert(c, "")
-	end,
-	vector = function (var, c)
-		local value_sid = get_sidtype(var.value)
-		table.insert(c, string.format("\tpublic static %s clone_%s(%s x) { %s y = new %s(); for(%s e : x) { y.add(clone_%s(e)); } return y; }",
-		 var.finaltype, var.sid, var.finaltype, var.finaltype, var.finaltype, var.finalvalue, value_sid))
-		table.insert(c, string.format("\tpublic static int hashcode_%s(%s x) { int h = 0x9e3779b1 * x.size(); for(%s e : x) h = h * 31 + hashcode_%s(e); return h; }",
-		 var.sid, var.finaltype, var.finalvalue, value_sid))
-		table.insert(c, string.format("\tpublic static boolean equals_%s(%s x, %s y) { return x.equals(y); }", var.sid, var.finaltype, var.finaltype))
-		table.insert(c, string.format("\tpublic static int compareto_%s(%s x, %s y) { return 0; }",
-		 var.sid, var.finaltype, var.finaltype))
-		table.insert(c, string.format("\tpublic static String tostring_%s(%s x) { return x.toString(); }", var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static void marshal_%s(OctetsStream os, %s x) { os.marshalUInt(x.size()); for(%s e : x) marshal_%s(os, e); }",
-		  var.sid, var.finaltype, var.finalvalue, value_sid))
-		table.insert(c, string.format("\tpublic static %s unmarshal_%s(OctetsStream os) throws MarshalException { %s y = new %s(); for(int n = os.unmarshalUInt() ; n > 0 ; n--) y.add(unmarshal_%s(os)); return y; }", 
-		 var.finaltype, var.sid, var.finaltype, var.finaltype, value_sid))
-		table.insert(c, string.format("\tpublic static void marshalscheme_%s(OctetsStream os, %s x) { os.marshalUInt(x.size()); for(%s e : x) marshalscheme_%s(os, e); }",
-		  var.sid, var.finaltype, var.finalvalue, value_sid))
-		table.insert(c, string.format("\tpublic static %s unmarshalscheme_%s(OctetsStream os) throws MarshalException { %s y = new %s(); for(int n = os.unmarshalUInt() ; n > 0 ; n--) y.add(unmarshalscheme_%s(os)); return y; }", 
-		 var.finaltype, var.sid, var.finaltype, var.finaltype, value_sid))		
-		table.insert(c, "")
-	end,
-	hashset = function (var, c)
-		local value_sid = get_sidtype(var.value)
-		table.insert(c, string.format("\tpublic static %s clone_%s(%s x) { %s y = new %s(); for(%s e : x) { y.add(clone_%s(e)); } return y; }",
-		 var.finaltype, var.sid, var.finaltype, var.finaltype, var.finaltype, var.finalvalue, value_sid))
-		table.insert(c, string.format("\tpublic static int hashcode_%s(%s x) { int h = 0x9e3779b1 * x.size(); for(%s e : x) h = h * 31 + hashcode_%s(e); return h; }",
-		 var.sid, var.finaltype, var.finalvalue, value_sid))
-		table.insert(c, string.format("\tpublic static boolean equals_%s(%s x, %s y) { return x.equals(y); }", var.sid, var.finaltype, var.finaltype))
-		table.insert(c, string.format("\tpublic static int compareto_%s(%s x, %s y) { return 0; }",
-		 var.sid, var.finaltype, var.finaltype))
-		table.insert(c, string.format("\tpublic static String tostring_%s(%s x) { return x.toString(); }", var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static void marshal_%s(OctetsStream os, %s x) { os.marshalUInt(x.size()); for(%s e : x) marshal_%s(os, e); }",
-		  var.sid, var.finaltype, var.finalvalue, value_sid))
-		table.insert(c, string.format("\tpublic static %s unmarshal_%s(OctetsStream os) throws MarshalException { %s y = new %s(); for(int n = os.unmarshalUInt() ; n > 0 ; n--) y.add(unmarshal_%s(os)); return y; }", 
-		 var.finaltype, var.sid, var.finaltype, var.finaltype, value_sid))
-		table.insert(c, string.format("\tpublic static void marshalscheme_%s(OctetsStream os, %s x) { os.marshalUInt(x.size()); for(%s e : x) marshalscheme_%s(os, e); }",
-		  var.sid, var.finaltype, var.finalvalue, value_sid))
-		table.insert(c, string.format("\tpublic static %s unmarshalscheme_%s(OctetsStream os) throws MarshalException { %s y = new %s(); for(int n = os.unmarshalUInt() ; n > 0 ; n--) y.add(unmarshalscheme_%s(os)); return y; }", 
-		 var.finaltype, var.sid, var.finaltype, var.finaltype, value_sid))
-		table.insert(c, "")
-	end,
-	treeset = function (var, c)
-		local value_sid = get_sidtype(var.value)
-		table.insert(c, string.format("\tpublic static %s clone_%s(%s x) { %s y = new %s(); for(%s e : x) { y.add(clone_%s(e)); } return y; }",
-		 var.finaltype, var.sid, var.finaltype, var.finaltype, var.finaltype, var.finalvalue, value_sid))
-		table.insert(c, string.format("\tpublic static int hashcode_%s(%s x) { int h = 0x9e3779b1 * x.size(); for(%s e : x) h = h * 31 + hashcode_%s(e); return h; }",
-		 var.sid, var.finaltype, var.finalvalue, value_sid))
-		table.insert(c, string.format("\tpublic static boolean equals_%s(%s x, %s y) { return x.equals(y); }", var.sid, var.finaltype, var.finaltype))
-		table.insert(c, string.format("\tpublic static int compareto_%s(%s x, %s y) { return 0; }",
-		 var.sid, var.finaltype, var.finaltype))
-		table.insert(c, string.format("\tpublic static String tostring_%s(%s x) { return x.toString(); }", var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static void marshal_%s(OctetsStream os, %s x) { os.marshalUInt(x.size()); for(%s e : x) marshal_%s(os, e); }",
-		  var.sid, var.finaltype, var.finalvalue, value_sid))
-		table.insert(c, string.format("\tpublic static %s unmarshal_%s(OctetsStream os) throws MarshalException { %s y = new %s(); for(int n = os.unmarshalUInt() ; n > 0 ; n--) y.add(unmarshal_%s(os)); return y; }", 
-		 var.finaltype, var.sid, var.finaltype, var.finaltype, value_sid))
-		table.insert(c, string.format("\tpublic static void marshalscheme_%s(OctetsStream os, %s x) { os.marshalUInt(x.size()); for(%s e : x) marshalscheme_%s(os, e); }",
-		  var.sid, var.finaltype, var.finalvalue, value_sid))
-		table.insert(c, string.format("\tpublic static %s unmarshalscheme_%s(OctetsStream os) throws MarshalException { %s y = new %s(); for(int n = os.unmarshalUInt() ; n > 0 ; n--) y.add(unmarshalscheme_%s(os)); return y; }", 
-		 var.finaltype, var.sid, var.finaltype, var.finaltype, value_sid))	
-		table.insert(c, "")
-	end,
-	hashmap = function (var, c)
-		local key_sid = get_sidtype(var.key)
-		local value_sid = get_sidtype(var.value)
-		table.insert(c, string.format("\tpublic static %s clone_%s(%s x) { %s y = new %s(); for(Map.Entry<%s, %s> e : x.entrySet()) { y.put(clone_%s(e.getKey()), clone_%s(e.getValue())); } return y; }",
-		 var.finaltype, var.sid, var.finaltype, var.finaltype, var.finaltype, var.finalkey, var.finalvalue, key_sid, value_sid))
-		table.insert(c, string.format("\tpublic static int hashcode_%s(%s x) { int h = 0x9e3779b1 * x.size(); for(Map.Entry<%s, %s> e : x.entrySet()) h = h * 31 + hashcode_%s(e.getKey()) + hashcode_%s(e.getValue()); return h; }",
-		 var.sid, var.finaltype, var.finalkey, var.finalvalue, key_sid, value_sid))
-		table.insert(c, string.format("\tpublic static boolean equals_%s(%s x, %s y) { return x.equals(y); }", var.sid, var.finaltype, var.finaltype))
-		table.insert(c, string.format("\tpublic static int compareto_%s(%s x, %s y) { return 0; }",
-		 var.sid, var.finaltype, var.finaltype))
-		table.insert(c, string.format("\tpublic static String tostring_%s(%s x) { return x.toString(); }", var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static void marshal_%s(OctetsStream os, %s x) { os.marshalUInt(x.size()); for(Map.Entry<%s, %s> e : x.entrySet()) { marshal_%s(os, e.getKey()); marshal_%s(os, e.getValue()); } }",
-		  var.sid, var.finaltype, var.finalkey, var.finalvalue, key_sid, value_sid))
-		table.insert(c, string.format("\tpublic static %s unmarshal_%s(OctetsStream os) throws MarshalException { %s y = new %s(); for(int n = os.unmarshalUInt() ; n > 0 ; n--) y.put(unmarshal_%s(os), unmarshal_%s(os)); return y; }", 
-		 var.finaltype, var.sid, var.finaltype, var.finaltype, key_sid, value_sid))
-		table.insert(c, string.format("\tpublic static void marshalscheme_%s(OctetsStream os, %s x) { os.marshalUInt(x.size()); for(Map.Entry<%s, %s> e : x.entrySet()) { marshal_%s(os, e.getKey()); marshalscheme_%s(os, e.getValue()); } }",
-		  var.sid, var.finaltype, var.finalkey, var.finalvalue, key_sid, value_sid))
-		table.insert(c, string.format("\tpublic static %s unmarshalscheme_%s(OctetsStream os) throws MarshalException { %s y = new %s(); for(int n = os.unmarshalUInt() ; n > 0 ; n--) y.put(unmarshal_%s(os), unmarshalscheme_%s(os)); return y; }", 
-		 var.finaltype, var.sid, var.finaltype, var.finaltype, key_sid, value_sid))	
-		table.insert(c, "")
-	end,
-	treemap = function (var, c)
-		local key_sid = get_sidtype(var.key)
-		local value_sid = get_sidtype(var.value)
-		table.insert(c, string.format("\tpublic static %s clone_%s(%s x) { %s y = new %s(); for(Map.Entry<%s, %s> e : x.entrySet()) { y.put(clone_%s(e.getKey()), clone_%s(e.getValue())); } return y; }",
-		 var.finaltype, var.sid, var.finaltype, var.finaltype, var.finaltype, var.finalkey, var.finalvalue, key_sid, value_sid))
-		table.insert(c, string.format("\tpublic static int hashcode_%s(%s x) { int h = 0x9e3779b1 * x.size(); for(Map.Entry<%s, %s> e : x.entrySet()) h = h * 31 + hashcode_%s(e.getKey()) + hashcode_%s(e.getValue()); return h; }",
-		 var.sid, var.finaltype, var.finalkey, var.finalvalue, key_sid, value_sid))
-		table.insert(c, string.format("\tpublic static boolean equals_%s(%s x, %s y) { return x.equals(y); }", var.sid, var.finaltype, var.finaltype))
-		table.insert(c, string.format("\tpublic static int compareto_%s(%s x, %s y) { return 0; }",
-		 var.sid, var.finaltype, var.finaltype))
-		table.insert(c, string.format("\tpublic static String tostring_%s(%s x) { return x.toString(); }", var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static void marshal_%s(OctetsStream os, %s x) { os.marshalUInt(x.size()); for(Map.Entry<%s, %s> e : x.entrySet()) { marshal_%s(os, e.getKey()); marshal_%s(os, e.getValue()); } }",
-		  var.sid, var.finaltype, var.finalkey, var.finalvalue, key_sid, value_sid))
-		table.insert(c, string.format("\tpublic static %s unmarshal_%s(OctetsStream os) throws MarshalException { %s y = new %s(); for(int n = os.unmarshalUInt() ; n > 0 ; n--) y.put(unmarshal_%s(os), unmarshal_%s(os)); return y; }", 
-		 var.finaltype, var.sid, var.finaltype, var.finaltype, key_sid, value_sid))
-		table.insert(c, string.format("\tpublic static void marshalscheme_%s(OctetsStream os, %s x) { os.marshalUInt(x.size()); for(Map.Entry<%s, %s> e : x.entrySet()) { marshal_%s(os, e.getKey()); marshalscheme_%s(os, e.getValue()); } }",
-		  var.sid, var.finaltype, var.finalkey, var.finalvalue, key_sid, value_sid))
-		table.insert(c, string.format("\tpublic static %s unmarshalscheme_%s(OctetsStream os) throws MarshalException { %s y = new %s(); for(int n = os.unmarshalUInt() ; n > 0 ; n--) y.put(unmarshal_%s(os), unmarshalscheme_%s(os)); return y; }", 
-		 var.finaltype, var.sid, var.finaltype, var.finaltype, key_sid, value_sid))	
-		table.insert(c, "")
-	end,
-	bean = function(var, c)
-		table.insert(c, string.format("\tpublic static %s clone_%s(%s x) { return x.clone(); }", var.finaltype, var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static int hashcode_%s(%s x) { return x.hashCode(); }", var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static boolean equals_%s(%s x, %s y) { return x.equals(y); }", var.sid, var.finaltype, var.finaltype))
-		table.insert(c, string.format("\tpublic static int compareto_%s(%s x, %s y) { return x.compareTo(y); }", var.sid, var.finaltype, var.finaltype))
-		table.insert(c, string.format("\tpublic static String tostring_%s(%s x) { return x.toString(); }", var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static void marshal_%s(OctetsStream os, %s x) { os.marshal(x); }", var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static %s unmarshal_%s(OctetsStream os) throws MarshalException { %s o = new %s(); o.unmarshal(os); return o; }", var.finaltype, var.sid, var.finaltype, var.finaltype))
-		table.insert(c, string.format("\tpublic static void marshalscheme_%s(OctetsStream os, %s x) { os.marshal(x); }", var.sid, var.finaltype))
-		table.insert(c, string.format("\tpublic static %s unmarshalscheme_%s(OctetsStream os) throws MarshalException { %s o = new %s(); o.unmarshalScheme(os); return o; }", var.finaltype, var.sid, var.finaltype, var.finaltype))
-		table.insert(c, "")
-	end,
-}
 context["helper_methods"] = function(ctx)
 	local s = {}
 	for sid, var in pairs(helptypes) do 
-		helper_processor[var.basetype](var, s)
+		local ttype = typeclass[var.basetype]
+		for _, method in ipairs({"clone", "hashcode", "equals", "compareto", "tostring", "marshal", "unmarshal", "marshalscheme", "unmarshalscheme"}) do
+			table.insert(s, ttype[method](var, ttype))
+		end
+		table.insert(s, "")
 	end
 	return table.concat(s, "\n")
 end
 
-
---[[
-local ctx = context
-ctx.bean = allbeans.TestType
-gen_save(template_bean, "e:/TestType.java", ctx)
-
-ctx.handler = allhandlers.Server
-gen_save(template_bean_handler, "e:/TestTypeHandler.java", ctx)
-
-ctx.bean = allbeans.Hello
-gen_save(template_rpcbean, "e:/Hello.java", ctx)
-gen_save(template_rpc_handler, "e:/HelloHandler.java", ctx)
-
-
-gen_save(template_allbeans, "e:/AllBeans.java", ctx)
-gen_save(template_allhandlers, "e:/AllHandlers.java", ctx)
---]]
 function gen_beans()
 	local ctx = context
 	local path = string.format("%s/%s", root, bean_path)
@@ -877,10 +651,11 @@ function gen_handlers()
 		gen_save(template_allhandlers, string.format("%s/AllHandlers.java", path), ctx)
 		for _, bean in ipairs(handler.beans) do
 			ctx.bean = bean
+			local noreplace = true
 			if not bean.rpc then
-				gen_save(template_bean_handler, string.format("%s/%sHandler.java", path, bean.name), ctx)
+				gen_save(template_bean_handler, string.format("%s/%sHandler.java", path, bean.name), ctx, noreplace)
 			else
-				gen_save(template_rpc_handler, string.format("%s/%sHandler.java", path, bean.name), ctx)
+				gen_save(template_rpc_handler, string.format("%s/%sHandler.java", path, bean.name), ctx, noreplace)
 			end
 		end
 	end
@@ -893,7 +668,6 @@ function gen_helpers()
 	gen_save(template_helper, path, ctx)
 end
 
---root = "e:/."
 gen_beans()
 gen_handlers()
 gen_helpers()

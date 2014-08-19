@@ -11,14 +11,12 @@ public final class TestBean implements Bean<TestBean>
 	boolean v1;
 
 
-	public TestBean()
-	{
+	public TestBean() {
 		this.v1 = false;
 
 	}
 
-	public TestBean (boolean v1)
-	{
+	public TestBean (boolean v1) {
 		this.v1 = v1;
 
 	}

@@ -12,15 +12,13 @@ public final class HelloRes implements Bean<HelloRes>
 	short v3;
 
 
-	public HelloRes()
-	{
+	public HelloRes() {
 		this.v1 = false;
 		this.v3 = 0;
 
 	}
 
-	public HelloRes (boolean v1, short v3)
-	{
+	public HelloRes (boolean v1, short v3) {
 		this.v1 = v1;
 		this.v3 = v3;
 

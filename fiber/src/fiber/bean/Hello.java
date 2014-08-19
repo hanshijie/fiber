@@ -2,8 +2,7 @@ package fiber.bean;
 
 import fiber.io.*;
 
-public final class Hello extends RpcBean<HelloArg, HelloRes>
-{
+public final class Hello extends RpcBean<HelloArg, HelloRes> {
 	public  static final Hello STUB = new Hello();
 	public Hello() {}
 	public Hello(HelloArg a) { arg = a; }

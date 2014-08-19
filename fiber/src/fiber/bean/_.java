@@ -45,7 +45,7 @@ class _ {
 	public static void marshalscheme_short(OctetsStream os, short x) { os.marshal(x); }
 	public static short unmarshalscheme_short(OctetsStream os) throws MarshalException { return os.unmarshalShort(); }
 
-	public static Octets clone_binary(Octets x) { return x.clone(); }
+	public static Octets clone_binary(Octets x) { return x; }
 	public static int hashcode_binary(Octets x) { return x.hashCode(); }
 	public static boolean equals_binary(Octets x, Octets y) { return x.equals(y); }
 	public static int compareto_binary(Octets x, Octets y) { return x.compareTo(y); }
@@ -140,9 +140,9 @@ class _ {
 	public static boolean equals_TestBean(TestBean x, TestBean y) { return x.equals(y); }
 	public static int compareto_TestBean(TestBean x, TestBean y) { return x.compareTo(y); }
 	public static String tostring_TestBean(TestBean x) { return x.toString(); }
-	public static void marshal_TestBean(OctetsStream os, TestBean x) { os.marshal(x); }
+	public static void marshal_TestBean(OctetsStream os, TestBean x) { x.marshal(os); }
 	public static TestBean unmarshal_TestBean(OctetsStream os) throws MarshalException { TestBean o = new TestBean(); o.unmarshal(os); return o; }
-	public static void marshalscheme_TestBean(OctetsStream os, TestBean x) { os.marshal(x); }
+	public static void marshalscheme_TestBean(OctetsStream os, TestBean x) { x.marshalScheme(os); }
 	public static TestBean unmarshalscheme_TestBean(OctetsStream os) throws MarshalException { TestBean o = new TestBean(); o.unmarshalScheme(os); return o; }
 
 	public static double clone_double(double x) { return x; }
