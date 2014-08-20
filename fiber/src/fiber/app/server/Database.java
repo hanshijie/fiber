@@ -2,9 +2,11 @@ package fiber.app.server;
 import java.util.HashMap;
 import java.util.Map;
 
+import fiber.bean.TestType;
 import fiber.common.LockPool;
 import fiber.common.Marshaller;
 import fiber.common.Wrapper;
+import fiber.io.Bean;
 import fiber.io.Log;
 import fiber.io.MarshalException;
 import fiber.io.OctetsStream;
@@ -12,6 +14,9 @@ import fiber.mapdb.TValue;
 import fiber.mapdb.Table;
 import fiber.mapdb.WKey;
 import fiber.mapdb.WValue;
+
+import fiber.bean.*;
+import static fiber.bean._.*;
 
 public class Database {
 	private final static Map<Integer, Table> tables = new HashMap<Integer, Table>();
@@ -32,19 +37,10 @@ public class Database {
 		tables.remove(tableid);
 	}
 	
-	public static Marshaller IntMarshaller = new Marshaller() {
-		@Override
-		public void marshal(OctetsStream os, Object key) {
-			os.marshal((int)(Integer)key);
-		}
-
-		@Override
-		public Integer unmarshal(OctetsStream os) throws MarshalException {
-			return os.unmarshalInt();
-		}
-		
-	};
 	
+	/////////////////////////////////////////////////////////
+	//  WValue Notifier defines 
+	/////////////////////////////////////////////////////////
 	public static class WValueNotifier extends Wrapper.Notifier {
 		private final WValue value;
 		public WValueNotifier(WValue v) {
@@ -56,13 +52,9 @@ public class Database {
 		}
 	}
 	
-	public static class IntIntTable extends Table {
-		public IntIntTable(int id, boolean persist) {
-			super(id, persist, IntMarshaller, IntMarshaller);
-		}
-	}
-	
-	public final static Table tUser = new IntIntTable(1, true);
+	/////////////////////////////////////////////////////////
+	//  Wrapper defines 
+	/////////////////////////////////////////////////////////
 	public final static class WrapperInt extends Wrapper<Integer> {
 		public WrapperInt(Integer w, Notifier n) {
 			super(w, n);
@@ -82,8 +74,85 @@ public class Database {
 			forceModify();
 		}
 		
+	}	
+	/////////////////////////////////////////////////////////
+	//  marshaller defines 
+	/////////////////////////////////////////////////////////
+	public static Marshaller IntMarshaller = new Marshaller() {
+		@Override
+		public void marshal(OctetsStream os, Object key) {
+			os.marshal((int)(Integer)key);
+		}
+
+		@Override
+		public Integer unmarshal(OctetsStream os) throws MarshalException {
+			return os.unmarshalInt();
+		}
+		
+	};
+	
+	public static class BeanMarshaller implements Marshaller {
+		private final Bean<?> stub;
+		public BeanMarshaller(Bean<?> stub) {
+			this.stub = stub;
+		}
+		@Override
+		public void marshal(OctetsStream os, Object key) {
+			((Bean<?>)key).marshal(os);
+		}
+
+		@Override
+		public Object unmarshal(OctetsStream os) throws MarshalException {
+			Bean<?> obj = this.stub.create();
+			obj.unmarshal(os);
+			return obj;
+		}
 	}
 	
+	public static class BeanSchemeMarshaller implements Marshaller {
+		private final Bean<?> stub;
+		public BeanSchemeMarshaller(Bean<?> stub) {
+			this.stub = stub;
+		}
+		@Override
+		public void marshal(OctetsStream os, Object key) {
+			((Bean<?>)key).marshalScheme(os);
+		}
+
+		@Override
+		public Object unmarshal(OctetsStream os) throws MarshalException {
+			Bean<?> obj = this.stub.create();
+			obj.unmarshalScheme(os);
+			return obj;
+		}
+	}
+	
+	/////////////////////////////////////////////////////////
+	//  Table Class defines 
+	/////////////////////////////////////////////////////////
+	public static class IntIntTable extends Table {
+		public IntIntTable(int id, boolean persist) {
+			super(id, persist, IntMarshaller, IntMarshaller);
+		}
+	}
+	
+	
+	
+	/////////////////////////////////////////////////////////
+	//  db table defines 
+	/////////////////////////////////////////////////////////
+	public final static Table tUser;
+	public final static Table tSession;
+
+	static {
+		register(tUser = new IntIntTable(1, false));
+		register(tSession = new Table(2, false, IntMarshaller, new BeanMarshaller(TestType.STUB)));
+	}
+	
+	/////////////////////////////////////////////////////////
+	//  table wrapper getter methods defines 
+	/////////////////////////////////////////////////////////
+
 	public static WrapperInt getUser(int uid) {
 		Transaction txn = Transaction.get();
 		WKey key = new WKey(tUser, uid);
@@ -102,14 +171,23 @@ public class Database {
 		}
 	}
 	
-	static {
-		register(tUser);
+	public static WrapperTestType getSession(int sid) {
+		Transaction txn = Transaction.get();
+		WKey key = new WKey(tSession, sid);
+		WValue value = txn.getData(key);
+		if(value != null) {
+			return (_.WrapperTestType)value.getWrapper();
+		} else {
+			final TValue v = tSession.get(sid);
+			value = new WValue(v);
+			WrapperTestType wrap = new WrapperTestType((TestType)v.getValue(), new WValueNotifier(value));
+			value.setWrapper(wrap);
+			txn.putData(key, value);
+			return wrap;
+		}
 	}
 	
-	
-	public static void main(String[] args) {
-		System.setProperty("log_level", Integer.valueOf(Log.LOG_ALL).toString());
-		LockPool.init(32);
+	public static void test1() {
 		int N = 5;
 		for(int i = 1 ; i < N ; i++) {
 			WrapperInt wrap = getUser(i);
@@ -136,6 +214,64 @@ public class Database {
 			TValue value = tUser.get(i);
 			Log.trace("%s => %s", i, value);
 		}
+	}
+	
+	public static void test2() {
+		int N = 5;
+		for(int i = 1 ; i < N ; i++) {
+			WrapperTestType wrap = getSession(i);
+			if(wrap.isNULL()) wrap.assign(new TestType());
+		}
+		
+		Transaction txn = Transaction.get();
+		txn.dump();
+		
+		for(int i = 0 ; i < N * 2 ; i++) {
+			TValue value = tSession.get(i);
+			Log.trace("%s => %s", i, value);
+		}
+		
+		try {
+			txn.commit();
+			txn.end();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		{
+			WrapperTestType w = getSession(1);
+			w.setv1(true);
+			w.setv2((byte)7);
+			try {
+				txn.commit();
+				txn.end();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			Log.trace("%s", getSession(1));
+		}
+		{
+			WrapperTestType w = getSession(1);
+			WrapperTestBean b = w.getv19();
+			b.setv1(true);
+			w.assign(new TestType());
+			w.setv2((byte)8);
+			b.setv1(true);
+			
+			try {
+				txn.commit();
+				txn.end();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			Log.trace("%s", getSession(1));
+		}
+	}
+	
+	public static void main(String[] args) {
+		System.setProperty("log_level", Integer.valueOf(Log.LOG_ALL).toString());
+		LockPool.init(32);
+		test2();
 		
 	}
 }

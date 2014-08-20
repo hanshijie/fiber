@@ -6,7 +6,7 @@ import fiber.common.Marshaller;
 import fiber.io.MarshalException;
 import fiber.io.OctetsStream;
 
-public abstract class Table {
+public class Table {
 	private final ConcurrentHashMap<Object, TValue> map;
 	private final int id;
 	private final boolean persist;

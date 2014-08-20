@@ -219,7 +219,7 @@ package fiber.bean;
 
 $(helper_imports)
 
-class $(helper_class) {
+public class $(helper_class) {
 $(helper_methods)
 
 $(helper_wrappers)
@@ -680,8 +680,8 @@ local template_wrapper = [=[
 		}
 		
 		@Override
-		public void refresh($(bean.name) o) {
-			super.refresh(o);
+		public void internalRefresh($(bean.name) o) {
+			super.internalRefresh(o);
 $(wrapper_refresh)
 		}
 		
@@ -705,7 +705,7 @@ context.wrapper_refresh = function(ctx)
 	local s = ""
 	for _, var in ipairs(ctx.bean) do
 		if is_container(var.basetype) or var.basetype == "bean" then
-			s = s .. string.format("\t\t\tif(_wrapper%s != null )_wrapper%s.refresh(o.get%s());\n", var.name, var.name, var.name)
+			s = s .. string.format("\t\t\tif(_wrapper%s != null )_wrapper%s.internalRefresh(o != null ? o.get%s() : null);\n", var.name, var.name, var.name)
 		end
 	end
 	return s
@@ -714,7 +714,6 @@ end
 context.wrapper_getter_setter = function (ctx)
 	local s = {}
 	for _, var in ipairs(ctx.bean) do
-		print(ctx.bean.name, var.name, var.basetype)
 		local ttype = typeclass[var.basetype]
 		table.insert(s, ttype.wrappergettersetter(var, ttype))
 	end

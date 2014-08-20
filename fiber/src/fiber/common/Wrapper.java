@@ -57,9 +57,8 @@ public abstract class Wrapper<W> {
 	public abstract W shallowClone();
 
 	public final void assign(W w) {
-		this.data = w;
-		Log.debug("BeanW.assign. origin_data:%s data:%s", this.origin_data, this.data);
-		notifier.onChange(this.data);
+		internalRefresh(w);
+		notifier.onChange(w);
 	}
 	
 	/**
@@ -67,7 +66,7 @@ public abstract class Wrapper<W> {
 	 * @param w
 	 * @desc  注意!如果想更新data, 使用assign, 而不是refresh！！！
 	 */
-	public void refresh(W w) {
+	public void internalRefresh(W w) {
 		this.data = w;
 	}
 	
