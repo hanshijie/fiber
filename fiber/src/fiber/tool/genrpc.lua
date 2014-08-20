@@ -34,8 +34,7 @@ package fiber.bean;
 import fiber.io.*;
 $(bean_import)
 
-public final class $(bean.name) implements Bean<$(bean.name)>
-{
+public final class $(bean.name) implements Bean<$(bean.name)> {
 	public static final int TYPE = $(bean.type);
 	public static final $(bean.name) STUB = new $(bean.name)();
 
@@ -53,6 +52,7 @@ $(bean_init)
 	@Override public final int type() { return $(bean.type); }
 	@Override public final int maxsize() { return $(bean.maxsize); }
 	@Override public final $(bean.name) create() { return new $(bean.name)(); }
+	public final $(bean.name) shallowClone() { try { return ($(bean.name))super.clone(); } catch (CloneNotSupportedException e) {	} return null; }
 	
 $(bean_getter_setter)
 
@@ -221,6 +221,8 @@ $(helper_imports)
 
 class $(helper_class) {
 $(helper_methods)
+
+$(helper_wrappers)
 }
 ]=]
 
@@ -259,11 +261,14 @@ local function eval(name, ctx)
 	end
 end
 
-local function gen_save(template, path, ctx, noreplace)
-	local content = template:gsub("%$%((.-)%)", function (s) 
+local function gen_template(template, ctx)
+	return template:gsub("%$%((.-)%)", function (s) 
 		return eval(s, ctx)
 	end)
-	--check_create_path(path)
+end
+
+local function gen_save(template, path, ctx, noreplace)
+	local content = gen_template(template, ctx)
 	local outf = io.open(path)
 	if noreplace and outf then return end
 	if not outf or outf:read("*a") ~= content then
@@ -316,6 +321,10 @@ function get_objtype(rawtype)
 	return get_container_keytype(rawtype)
 end
 
+function get_widtype(type)
+	return type:gsub("[^%w]", "")
+end
+
 local containtypes = { vector = true, hashset = true, treeset = true, hashmap = true, treemap = true}
 local function is_container(type)
 	return containtypes[type]
@@ -339,6 +348,9 @@ tc.bool = {
 	unmarshal = function(var, tc) return string.format("\tpublic static %s unmarshal_%s(OctetsStream os) throws MarshalException { return os.unmarshal%s(); }", var.finaltype, var.sid, get_objtype(var.type)) end,
 	marshalscheme = function(var, tc) return string.format("\tpublic static void marshalscheme_%s(OctetsStream os, %s x) { os.marshal(x); }", var.sid, var.finaltype) end,
 	unmarshalscheme = function(var, tc) return string.format("\tpublic static %s unmarshalscheme_%s(OctetsStream os) throws MarshalException { return os.unmarshal%s(); }", var.finaltype, var.sid, get_objtype(var.type)) end,
+	
+	wrappergettersetter = function(var, tc) return string.format("\t\tpublic %s get%s() { return this.data.get%s(); }\n", var.finaltype, var.name, var.name)
+		.. string.format("\t\tpublic void set%s(%s %s) { checkModify(); this.data.set%s(%s); }", var.name, var.finaltype, var.name, var.name, var.name) end,
 }
 
 tc.byte = merge(tc.bool, {
@@ -398,13 +410,25 @@ tc.vector = merge(tc.binary, {
 	unmarshal = function(var, tc) return string.format("\tpublic static %s unmarshal_%s(OctetsStream os) throws MarshalException { %s y = new %s(); for(int n = os.unmarshalUInt() ; n > 0 ; n--) y.add(unmarshal_%s(os)); return y; }", var.finaltype, var.sid, var.finaltype, var.finaltype, get_sidtype(var.value)) end,
 	marshalscheme = function(var, tc) return string.format("\tpublic static void marshalscheme_%s(OctetsStream os, %s x) { os.marshalUInt(x.size()); for(%s e : x) marshalscheme_%s(os, e); }", var.sid, var.finaltype, var.finalvalue, get_sidtype(var.value)) end,
 	unmarshalscheme = function(var, tc) return string.format("\tpublic static %s unmarshalscheme_%s(OctetsStream os) throws MarshalException { %s y = new %s(); for(int n = os.unmarshalUInt() ; n > 0 ; n--) y.add(unmarshalscheme_%s(os)); return y; }", var.finaltype, var.sid, var.finaltype, var.finaltype, get_sidtype(var.value)) end,
+	
+	wrapperbasetype = "fiber.mapdb.collectionwrapper.WList",
+	finalwrappertype = function (var, tc) return string.format("%s<%s>", tc.wrapperbasetype, var.finalvalue) end,
+	wrappergettersetter = function(var, tc) 
+		local finalwrappertype = tc.finalwrappertype(var, tc)
+		local wrappervar = "_wrapper" .. var.name
+		return string.format("\t\tprivate %s %s;\n", finalwrappertype, wrappervar)
+		.. string.format("\t\tpublic %s get%s() { return %s != null ? %s : (%s = new %s(%s.class, data.get%s(), new Notifier() { @SuppressWarnings(\"unchecked\")",
+			finalwrappertype, var.name, wrappervar, wrappervar, wrappervar, finalwrappertype, tc.finalbasetype, var.name)
+		.. string.format("\t\t\tpublic void onChange(Object o) { checkModify(); data.set%s((%s)o); } })); }",
+			 var.name, var.finaltype) end,
 })
 
 tc.hashset = merge(tc.vector, {
 	finalbasetype = "HashSet",
+	wrapperbasetype = "fiber.mapdb.collectionwrapper.WSet",
 })
 
-tc.treeset = merge(tc.vector, {
+tc.treeset = merge(tc.hashset, {
 	finalbasetype = "TreeSet",
 })
 
@@ -422,6 +446,9 @@ tc.hashmap = merge(tc.treeset, {
 	unmarshal = function(var, tc) return string.format("\tpublic static %s unmarshal_%s(OctetsStream os) throws MarshalException { %s y = new %s(); for(int n = os.unmarshalUInt() ; n > 0 ; n--) y.put(unmarshal_%s(os), unmarshal_%s(os)); return y; }", var.finaltype, var.sid, var.finaltype, var.finaltype, get_sidtype(var.key), get_sidtype(var.value)) end,
 	marshalscheme = function(var, tc) return string.format("\tpublic static void marshalscheme_%s(OctetsStream os, %s x) { os.marshalUInt(x.size()); for(Map.Entry<%s, %s> e : x.entrySet()) { marshal_%s(os, e.getKey()); marshalscheme_%s(os, e.getValue()); } }", var.sid, var.finaltype, var.finalkey, var.finalvalue, get_sidtype(var.key), get_sidtype(var.value)) end,
 	unmarshalscheme = function(var, tc) return string.format("\tpublic static %s unmarshalscheme_%s(OctetsStream os) throws MarshalException { %s y = new %s(); for(int n = os.unmarshalUInt() ; n > 0 ; n--) y.put(unmarshal_%s(os), unmarshalscheme_%s(os)); return y; }", var.finaltype, var.sid, var.finaltype, var.finaltype, get_sidtype(var.key), get_sidtype(var.value)) end,
+	
+	wrapperbasetype = "fiber.mapdb.collectionwrapper.WMap",
+	finalwrappertype = function (var, tc) return string.format("%s<%s, %s>", tc.wrapperbasetype, var.finalkey, var.finalvalue) end,
 })
 
 tc.treemap = merge(tc.hashmap, {
@@ -441,17 +468,28 @@ tc.bean = merge(tc.binary, {
 	unmarshal = function(var, tc) return string.format("\tpublic static %s unmarshal_%s(OctetsStream os) throws MarshalException { %s o = new %s(); o.unmarshal(os); return o; }", var.finaltype, var.sid, var.finaltype, var.finaltype) end,
 	marshalscheme = function(var, tc) return string.format("\tpublic static void marshalscheme_%s(OctetsStream os, %s x) { x.marshalScheme(os); }", var.sid, var.finaltype) end,
 	unmarshalscheme = function(var, tc) return string.format("\tpublic static %s unmarshalscheme_%s(OctetsStream os) throws MarshalException { %s o = new %s(); o.unmarshalScheme(os); return o; }", var.finaltype, var.sid, var.finaltype, var.finaltype) end,
+	
+	wrappergettersetter = function(var, tc) 
+		local finalwrappertype = "Wrapper" .. var.type
+		local wrappervar = "_wrapper" .. var.name
+		return string.format("\t\tprivate %s %s;\n", finalwrappertype, wrappervar)
+		.. string.format("\t\tpublic %s get%s() { return %s != null ? %s : (%s = new %s(data.get%s(), new Notifier() {",
+			finalwrappertype, var.name, wrappervar, wrappervar, wrappervar, finalwrappertype, var.name)
+		.. string.format("\t\t\tpublic void onChange(Object o) { checkModify(); data.set%s((%s)o); } })); }",
+			 var.name, var.finaltype) end,
 })
 
 function bean(b) 
 	if allbeans[b.name] then
 		err("bean %s dumplicate!", b.name)
 	end
+	b.type = tostring(b.type)
 	if beantypes[b.type] then
 		err("bean<%s> type:%s dumplicate!", b.name, b.type)
 	end
 	beantypes[b.type] = b
 	allbeans[b.name] = b
+
 	if b.handlers then
 		for _, handler in ipairs(b.handlers) do
 			if not allhandlers[handler] then err("unknown handler:%s", handler) end
@@ -468,7 +506,6 @@ function bean(b)
 			var[field] = ttype[field] and ttype[field](var, ttype)
 		end
 		helptypes[var.sid] = var
-
 		
 		var.clone = helper .. "clone_" .. var.sid
 		var.hashcode = helper .. "hashcode_" .. var.sid
@@ -493,11 +530,11 @@ function bean(b)
 		var.bean_unmarshal = string.format("\t\tthis.%s = %s(os);\n", var.name, var.unmarshal)
 		
 		var.bean_marshalscheme = string.format("%s(os, this.%s);", var.marshalscheme, var.name)
-		var.bean_unmarshalscheme = string.format("%s(os, this.%s);", var.unmarshalscheme, var.name)
+		var.bean_unmarshalscheme = string.format("this.%s = %s(os);", var.name, var.unmarshalscheme)
 		var.bean_getter_setter = string.format([=[ 
 	public final %s get%s() { return this.%s; }
-	public final void set(%s %s) { this.%s = %s; }
-]=], var.finaltype, var.name, var.name, var.finaltype, var.name, var.name, var.name)
+	public final void set%s(%s %s) { this.%s = %s; }
+]=], var.finaltype, var.name, var.name, var.name, var.finaltype, var.name, var.name, var.name)
 		if i ~= 1 then
 			var.bean_arg = ", " .. var.bean_arg
 		end
@@ -584,7 +621,7 @@ context.bean_unmarshalscheme = function(ctx)
 	local s = "\t\tswitch(os.unmarshalUInt()) {\n"
 	for i = #ctx.bean, 1, -1 do
 		local var = ctx.bean[i]
-		s = s .. string.format("\t\t\tcase %d : %s\n", i, var.bean_marshalscheme)
+		s = s .. string.format("\t\t\tcase %d : %s\n", i, var.bean_unmarshalscheme)
 	end
 	s = s .. "\t\t\tcase 0 : break;\n"
 	s = s .. "\t\t\tdefault: throw MarshalException.createEOF(false); \n"
@@ -613,11 +650,12 @@ context.helper_imports = function(ctx)
 	local imports = {
 		"fiber.io.*",
 		"java.util.*",
+		"fiber.common.Wrapper",
 	}
 	return "import " .. table.concat(imports, ";\nimport ") .. ";\n"
 end
 
-context["helper_methods"] = function(ctx)
+context.helper_methods = function(ctx)
 	local s = {}
 	for sid, var in pairs(helptypes) do 
 		local ttype = typeclass[var.basetype]
@@ -625,6 +663,60 @@ context["helper_methods"] = function(ctx)
 			table.insert(s, ttype[method](var, ttype))
 		end
 		table.insert(s, "")
+	end
+	return table.concat(s, "\n")
+end
+
+
+local template_wrapper = [=[  
+	public static final class Wrapper$(bean.name) extends Wrapper<$(bean.name)> {
+			public Wrapper$(bean.name)($(bean.name) w, Notifier n) {
+			super(w, n);
+		}
+
+		@Override
+		public $(bean.name) shallowClone() {
+			return this.data != null ? this.data.shallowClone() : null;
+		}
+		
+		@Override
+		public void refresh($(bean.name) o) {
+			super.refresh(o);
+$(wrapper_refresh)
+		}
+		
+$(wrapper_getter_setter)
+	}
+]=]
+
+context.helper_wrappers = function(ctx)
+	local s = {}
+	for name, bean in pairs(allbeans) do 
+		if not bean.rpc then
+			ctx.bean = bean
+			local content = gen_template(template_wrapper, ctx)
+			table.insert(s, content)
+		end
+	end
+	return table.concat(s, "\n")
+end
+
+context.wrapper_refresh = function(ctx)
+	local s = ""
+	for _, var in ipairs(ctx.bean) do
+		if is_container(var.basetype) or var.basetype == "bean" then
+			s = s .. string.format("\t\t\tif(_wrapper%s != null )_wrapper%s.refresh(o.get%s());\n", var.name, var.name, var.name)
+		end
+	end
+	return s
+end
+
+context.wrapper_getter_setter = function (ctx)
+	local s = {}
+	for _, var in ipairs(ctx.bean) do
+		print(ctx.bean.name, var.name, var.basetype)
+		local ttype = typeclass[var.basetype]
+		table.insert(s, ttype.wrappergettersetter(var, ttype))
 	end
 	return table.concat(s, "\n")
 end

@@ -2,25 +2,25 @@ local bean = bean or function() end
 local rpc = rpc or function() end
 local handler = handler or function() end
 local handlerset = handlerset or function() end
-local namespace = namespace or "fiber"
 
-handler {
-	name="Server", path="server"
-}
+handler { name="Server", path="server" }
 
-handler {
-	name="Client", path="client"
-}
+handler { name="Client", path="client" }
 
-local hs1 = handlerset {"Server", "Client" }
+handler { name="DBServer", path="dbserver" }
+
+handler { name="DBClient", path="dbclient", }
+
+local hssc = handlerset {"Server", "Client" }
+local hsdb = handlerset { "DBServer", "DBClient" }
 
 bean {
-	name="TestBean", type="2", maxsize="100", handlers = hs1,
+	name="TestBean", type=2, maxsize="100", handlers = hssc,
 	{ name="v1",  type="bool",                        comment="1字节布尔,0表示假,1表示真,其它默认表示真" },
 }
 
 bean{  
-	name="TestType", type=3, initsize=256, maxsize=65536, handlers= hs1,
+	name="TestType", type=3, initsize=256, maxsize=65536, handlers= hssc,
 	
 	{ name="v1",  type="bool",                        comment="1字节布尔,0表示假,1表示真,其它默认表示真" },
 	{ name="v2",  type="byte",                        comment="1字节整数" },
@@ -50,5 +50,5 @@ bean {
 }
 
 rpc {
-	name="Hello", type=4, maxsize=100, arg="HelloArg", res="HelloRes", timeout="30", handlers= hs1,
+	name="Hello", type=4, maxsize=100, arg="HelloArg", res="HelloRes", timeout="30", handlers= hssc,
 }
