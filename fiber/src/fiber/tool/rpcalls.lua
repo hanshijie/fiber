@@ -39,6 +39,9 @@ bean{
 	{ name="v16", type="hashmap<long,string>",        comment="无序映射容器(HashMap)" },
 	{ name="v17", type="treemap<TestBean,bool>",      comment="排序映射容器(TreeMap)" },
 	{ name="v19", type="TestBean",                    comment="嵌入其它bean" },
+	{ name="v20", type="pvector<bool>",            	comment="数组容器(ArrayList)" },
+	{ name="v23", type="phashset<long>",               comment="无序集合容器(HashSet)" },
+	{ name="v26", type="phashmap<long,string>",        comment="无序映射容器(HashMap)" },
 }
 
 bean {

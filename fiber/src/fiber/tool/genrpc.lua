@@ -180,13 +180,32 @@ $(handlers_stub)
 
 local template_bean_handler = [=[
 package fiber.handler.$(handler.path);
-
+/*
+import fiber.app.server.Procedure;
+import fiber.bean.UserLogin;
+import fiber.common.TaskPool;
+*/
 import fiber.bean.$(bean.name);
 import fiber.io.*;
 
 public class $(bean.name)Handler extends BeanHandler<$(bean.name)> {
 	@Override
 	public void onProcess(final IOSession session, final $(bean.name) arg) {
+		Log.trace("$(bean.name)Handler.onProcess. sessionid:%d, arg:%s", session.getId(), arg);
+		/*
+		TaskPool.execute(new Procedure() {
+			@Override
+			protected void execute() throws Exception {
+				log.trace("%s.execute. sessionid:%d, arg:%s", this, session.getId(), arg);
+			}
+			
+			@Override
+			protected void onRetError(int retcode, Object content) {
+				log.err("%s.onRetError. retcode:%d content:%s", this, retcode, content);
+			}
+
+		});
+		*/
 	}
 }
 ]=]
@@ -478,6 +497,22 @@ tc.bean = merge(tc.binary, {
 		.. string.format("\t\t\tpublic void onChange(Object o) { checkModify(); data.set%s((%s)o); } })); }",
 			 var.name, var.finaltype) end,
 })
+
+tc.pvector = merge(tc.vector, {
+	finalbasetype = "fiber.pcollections.ArrayList",	
+	wrapperbasetype = "fiber.mapdb.collectionwrapper.WPList",
+})
+
+tc.phashset = merge(tc.hashset, {
+	finalbasetype = "fiber.pcollections.HashSet",
+	wrapperbasetype = "fiber.mapdb.collectionwrapper.WPSet",
+})
+
+tc.phashmap = merge(tc.hashmap, {
+	finalbasetype = "fiber.pcollections.HashMap",
+	wrapperbasetype = "fiber.mapdb.collectionwrapper.WPMap",
+})
+
 
 function bean(b) 
 	if allbeans[b.name] then
