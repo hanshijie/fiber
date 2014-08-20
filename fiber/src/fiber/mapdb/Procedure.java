@@ -2,8 +2,10 @@ package fiber.mapdb;
 
 import fiber.common.RetException;
 import fiber.io.Log;
+import fiber.mapdb.Transaction.Dispatcher;
+import fiber.mapdb.Transaction.Logger;
 
-public abstract class Procedure {
+public abstract class Procedure implements Runnable {
 	private final int maxRedoCount;
 	public Procedure(int maxRedoCount) {
 		this.maxRedoCount = maxRedoCount;
@@ -17,11 +19,6 @@ public abstract class Procedure {
 	 * 设置好正确的txn上下文.
 	 */
 	protected abstract void prepare();
-	/*
-		Log.info("%s. prepare.", Thread.currentThread());
-		this.txn = Transaction.get();
-		this.txn.prepare();	
-	 */
 	
 	protected final void rollback() {
 		this.txn.rollback();
@@ -37,9 +34,14 @@ public abstract class Procedure {
 	}
 	
 	protected Transaction txn;
-	public final void process() throws Exception {
+	protected Logger log;
+	protected Dispatcher net;
+	public final void run() {
 		try {
 			this.prepare();
+			this.log = txn.getLogger();
+			this.net = txn.getDispatcher();
+			
 			for(int i = 0 ; i < this.maxRedoCount ; i++) {
 				try {
 					execute();
@@ -53,6 +55,8 @@ public abstract class Procedure {
 			this.onFail();
 		} catch (RetException ret) {
 			this.onRetError(ret.getRetcode(), ret.getContent());
+		} catch(Exception e) {
+			this.onException(e);
 		} finally {
 			this.end();
 		}
@@ -61,9 +65,12 @@ public abstract class Procedure {
 	abstract protected void execute() throws Exception;
 	
 	protected void onRetError(int retcode, Object content) {
-		Log.err("%s. onRetError. retcode:%d content:%s", Thread.currentThread(), retcode, content);
+		Log.err("%s.onRetError. retcode:%d content:%s", this, retcode, content);
+	}
+	protected void onException(Exception e) {
+		Log.err("%s.onException. exception:%s", this, e);
 	}
 	protected void onFail() {
-		Log.err("%s. procedure:%s fail!", Thread.currentThread(), this);
+		Log.err("%s.onFail.", this);
 	}
 }

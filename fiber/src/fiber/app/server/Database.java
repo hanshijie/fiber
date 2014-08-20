@@ -2,7 +2,7 @@ package fiber.app.server;
 import java.util.HashMap;
 import java.util.Map;
 
-import fiber.bean.TestType;
+import fiber.bean.SessionInfo;
 import fiber.common.LockPool;
 import fiber.common.Marshaller;
 import fiber.common.Wrapper;
@@ -146,7 +146,7 @@ public class Database {
 
 	static {
 		register(tUser = new IntIntTable(1, false));
-		register(tSession = new Table(2, false, IntMarshaller, new BeanMarshaller(TestType.STUB)));
+		register(tSession = new Table(2, false, IntMarshaller, new BeanMarshaller(SessionInfo.STUB)));
 	}
 	
 	/////////////////////////////////////////////////////////
@@ -171,16 +171,16 @@ public class Database {
 		}
 	}
 	
-	public static WrapperTestType getSession(int sid) {
+	public static WrapperSessionInfo getSession(int sid) {
 		Transaction txn = Transaction.get();
 		WKey key = new WKey(tSession, sid);
 		WValue value = txn.getData(key);
 		if(value != null) {
-			return (_.WrapperTestType)value.getWrapper();
+			return (_.WrapperSessionInfo)value.getWrapper();
 		} else {
 			final TValue v = tSession.get(sid);
 			value = new WValue(v);
-			WrapperTestType wrap = new WrapperTestType((TestType)v.getValue(), new WValueNotifier(value));
+			WrapperSessionInfo wrap = new WrapperSessionInfo((SessionInfo)v.getValue(), new WValueNotifier(value));
 			value.setWrapper(wrap);
 			txn.putData(key, value);
 			return wrap;
@@ -219,8 +219,8 @@ public class Database {
 	public static void test2() {
 		int N = 5;
 		for(int i = 1 ; i < N ; i++) {
-			WrapperTestType wrap = getSession(i);
-			if(wrap.isNULL()) wrap.assign(new TestType());
+			WrapperSessionInfo wrap = getSession(i);
+			if(wrap.isNULL()) wrap.assign(new SessionInfo());
 		}
 		
 		Transaction txn = Transaction.get();
@@ -239,9 +239,8 @@ public class Database {
 		}
 		
 		{
-			WrapperTestType w = getSession(1);
-			w.setv1(true);
-			w.setv2((byte)7);
+			WrapperSessionInfo w = getSession(1);
+			w.setuid(1218);
 			try {
 				txn.commit();
 				txn.end();
@@ -251,12 +250,10 @@ public class Database {
 			Log.trace("%s", getSession(1));
 		}
 		{
-			WrapperTestType w = getSession(1);
-			WrapperTestBean b = w.getv19();
-			b.setv1(true);
-			w.assign(new TestType());
-			w.setv2((byte)8);
-			b.setv1(true);
+			WrapperSessionInfo w = getSession(1);
+
+			w.assign(new SessionInfo());
+
 			
 			try {
 				txn.commit();

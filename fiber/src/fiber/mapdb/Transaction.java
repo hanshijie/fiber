@@ -6,13 +6,20 @@ import java.util.Map;
 import java.util.TreeSet;
 
 import fiber.common.LockPool;
+import fiber.io.Bean;
+import fiber.io.BeanCodec;
+import fiber.io.ClientManager;
 import fiber.io.Const;
+import fiber.io.IOSession;
 import fiber.io.Log;
+import fiber.io.Octets;
+import fiber.io.RpcBean;
+import fiber.io.RpcHandler;
 import static fiber.io.Log.*;
 
 public class Transaction {
 	
-	final static class Logger {
+	public final static class Logger {
 		private static final class LogInfo {
 			public final String level;
 			public final String msg;
@@ -82,24 +89,112 @@ public class Transaction {
 		}
 
 	}
+	
+	public static final class Dispatcher {
+		static final class Job1 implements Runnable {
+			private final IOSession session;
+			private final Octets data;
+			public Job1(IOSession s, Bean<?> bean) {
+				this.session = s;
+				this.data = BeanCodec.encode(bean);
+			}
+			@Override
+			public void run() {
+				session.write(data);
+			}
+		}
+		
+		static final class Job2 implements Runnable {
+			private final ClientManager manager;
+			private final Octets data;
+			public Job2(ClientManager m, Bean<?> bean) {
+				this.manager = m;
+				this.data = BeanCodec.encode(bean);
+			}
+			@Override
+			public void run() {
+				IOSession session = manager.getOnlySession();
+				if(session != null) {
+					session.write(data);
+				} else {
+					Log.warn("ClientManager:%s send fail. data:%s", manager, data.dump());
+				}
+			}
+		}
+		
+		static final class Job3<A extends Bean<A>, R extends Bean<R>> implements Runnable {
+			private final ClientManager manager;
+			private final RpcBean<A, R> rpcbean;
+			private final RpcHandler<A, R> handler;
+			public Job3(ClientManager m, RpcBean<A, R> rpcbean, RpcHandler<A, R> handler) {
+				this.manager = m;
+				this.rpcbean = rpcbean;
+				this.handler = handler;
+			}
+			@Override
+			public void run() {
+				if(handler != null) {
+					this.manager.sendRpc(rpcbean, handler);
+				} else {
+					this.manager.sendRpc(rpcbean);
+				}
+			}
+		}
+		
+		private final ArrayList<Runnable> jobs = new ArrayList<Runnable>();
+		
+		public void send(IOSession session, Bean<?> bean) {
+			this.jobs.add(new Job1(session, bean));
+		}
+		
+		public void send(ClientManager manager, Bean<?> bean) {
+			this.jobs.add(new Job2(manager, bean));
+		}
+		
+		public <A extends Bean<A>, R extends Bean<R>> void sendRpc(ClientManager manager, RpcBean<A, R> rpcbean) {
+			this.jobs.add(new Job3<A, R>(manager, rpcbean, null));
+		}
+		
+		public <A extends Bean<A>, R extends Bean<R>> void sendRpc(ClientManager manager, RpcBean<A, R> rpcbean, RpcHandler<A, R> handler) {
+			this.jobs.add(new Job3<A, R>(manager, rpcbean, handler));
+		}
+		
+		public void clear() {
+			this.jobs.clear();
+		}
+		
+		public void commit() {
+			for(Runnable job : this.jobs) {
+				job.run();
+			}
+			this.jobs.clear();
+		}
+	}
 
 	
 	private final HashMap<WKey, WValue> dataMap;
 	private final Logger logger;	
+	private final Dispatcher dispatcher;
 	private final TreeSet<Integer> lockSet;
 	public Transaction() {
 		this.dataMap = new HashMap<WKey, WValue>();
 		this.logger = new Logger();
 		this.lockSet = new TreeSet<Integer>();
+		this.dispatcher = new Dispatcher();
 	}
 	
 	public final Logger getLogger() {
 		return this.logger;
 	}
+	
+	public final Dispatcher getDispatcher() {
+		return this.dispatcher;
+	}
 
 	private final void clearDatas() {
 		this.dataMap.clear();
 		this.logger.clear();
+		this.dispatcher.clear();
 	}
 	
 	public final void prepare() {
@@ -125,6 +220,7 @@ public class Transaction {
 		}
 		commitModifyData();
 		this.logger.commit();
+		this.dispatcher.commit();
 		this.unlock();
 		Log.info("%s commit. end.", this);
 	}

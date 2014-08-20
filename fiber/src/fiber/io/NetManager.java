@@ -117,6 +117,7 @@ public class NetManager extends IOManager {
 			handler.process(session, bean);
 		} catch (Exception e) {
 			Log.alert("onReceiveMessage. BeanHandler:%s bean:%s exception:%s", handler, bean, e);
+			e.printStackTrace();
 		}
 	}
 

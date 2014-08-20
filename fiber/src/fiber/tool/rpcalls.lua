@@ -11,6 +11,8 @@ handler { name="DBServer", path="dbserver" }
 
 handler { name="DBClient", path="dbclient", }
 
+local hsse = handlerset { "Server"}
+local hscl = handlerset { "Client"}
 local hssc = handlerset {"Server", "Client" }
 local hsdb = handlerset { "DBServer", "DBClient" }
 
@@ -51,4 +53,22 @@ bean {
 
 rpc {
 	name="Hello", type=4, maxsize=100, arg="HelloArg", res="HelloRes", timeout="30", handlers= hssc,
+}
+
+bean {
+	name="SessionInfo", type=7, maxsize=10240,
+	{ name="uid", type="int"},
+	{ name="logintime", type="int"},
+}
+
+bean {
+	name="UserLogin", type=5, maxsize=1024, handlers=hsse,
+	{ name="uid", type="int" },
+	{ name="auth", type="binary"},
+}
+bean {
+	name="UserLoginRe", type=6, maxsize=102400, handlers=hscl,
+	{ name="retcode", type="int"},
+	{ name="time", type="int" },
+	{ name="roleids", type="vector<long>"},
 }

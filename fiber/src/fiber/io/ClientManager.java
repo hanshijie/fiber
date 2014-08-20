@@ -73,5 +73,9 @@ public class ClientManager extends NetManager {
 		return this.onlysession != null;
 	}
 	
+	public final IOSession getOnlySession() {
+		return this.onlysession;
+	}
+	
 	private IOSession onlysession;
 }
