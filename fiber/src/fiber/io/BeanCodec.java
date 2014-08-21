@@ -26,7 +26,7 @@ public final class BeanCodec extends ProtocolCodec {
 				step = 1;
 				BeanHandler<?> handler = handlerStub.get(type);
 				if(handler == null) {
-					Log.err("[session-%d] unhandle type:%d", type);
+					Log.err("[session-%d] unhandle type:%d", session.getId(), type);
 					session.close();
 					return;
 				}
