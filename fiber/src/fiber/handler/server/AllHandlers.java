@@ -10,6 +10,7 @@ public final class AllHandlers {
 		allhandlers.put(2, new TestBeanHandler());
 		allhandlers.put(3, new TestTypeHandler());
 		allhandlers.put(4, new HelloHandler());
+		allhandlers.put(7, new SessionInfoHandler());
 		allhandlers.put(5, new UserLoginHandler());
 	}
 

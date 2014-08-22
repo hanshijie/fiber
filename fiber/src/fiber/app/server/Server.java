@@ -2,12 +2,14 @@ package fiber.app.server;
 
 import java.util.Map;
 
+import fiber.bean.SessionInfo;
 import fiber.common.LockPool;
 import fiber.common.TaskPool;
 import fiber.handler.server.AllHandlers;
 import fiber.io.BeanHandler;
 import fiber.io.IOConfig;
 import fiber.io.IOPoller;
+import fiber.io.IOSession;
 import fiber.io.Log;
 import fiber.io.ServerManager;
 
@@ -33,7 +35,16 @@ public class Server {
 			{	
 				String addr = "0.0.0.0";
 				short port = 1314;
-				ServerManager server = new ServerManager(poller, handlerStub);
+				ServerManager server = new ServerManager(poller, handlerStub) {
+					protected void onAddSession(IOSession s) {
+						for(int i = 0 ; i < 10 ; i++)
+						s.send(new SessionInfo(12, 18));
+					}
+					
+					protected void onDelSession(IOSession s) {
+						
+					}
+				};
 				IOConfig conf = server.getConfig();
 				conf.setAddr(addr, port);
 				server.startServer();

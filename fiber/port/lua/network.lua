@@ -14,8 +14,8 @@ local nw = NetWork
 nw.recvt = {}
 nw.sendt = {}
 
-nw.recvtChange = {}  		-- recvt 的变动表
-nw.sendtChange = {} 		-- sendt 的变动表
+nw.recvt_change = {}  		-- recvt 的变动表
+nw.sendt_change = {} 		-- sendt 的变动表
 
 nw.sessions = {}
 
@@ -26,7 +26,7 @@ local deltimers = {} -- {id, id, ..}
 local OPER_ADD = 1
 local OPER_DEL = 2
 
-local function getKeys(t)
+local function get_keys(t)
 	local n = {}
 	for k, _ in pairs(t) do
 		table.insert(n, k)
@@ -34,7 +34,7 @@ local function getKeys(t)
 	return n
 end
 
-local function doChange(t, c)
+local function do_change(t, c)
 	local n = {}
 	for _, v in ipairs(t) do
 		n[v] = true
@@ -46,41 +46,41 @@ local function doChange(t, c)
 			n[k] = nil
 		end
 	end
-	return getKeys(n)
+	return get_keys(n)
 end
 
 function nw.register(s, recv, send)
 	if recv == true then
-		nw.recvtChange[s] = OPER_ADD
+		nw.recvt_change[s] = OPER_ADD
 	elseif recv == false then
-		nw.recvtChange[s] = OPER_DEL
+		nw.recvt_change[s] = OPER_DEL
 	end
 	
 	if send == true then
-		nw.sendtChange[s] = OPER_ADD
+		nw.sendt_change[s] = OPER_ADD
 	elseif send == false then
-		nw.sendtChange[s] = OPER_DEL
+		nw.sendt_change[s] = OPER_DEL
 	end
 end
 
 function nw.poll(timeout)
-	nw.doTimer()
-	nw.recvt = doChange(nw.recvt, nw.recvtChange)
-	nw.sendt = doChange(nw.sendt, nw.sendtChange)
-	local recvSockets, sendSockets, err = socket.select(nw.recvt, nw.sendt, timeout)
+	nw.polltimer()
+	nw.recvt = do_change(nw.recvt, nw.recvt_change)
+	nw.sendt = do_change(nw.sendt, nw.sendt_change)
+	local recv_sockets, send_sockets, err = socket.select(nw.recvt, nw.sendt, timeout)
 	if err then return end
-	log.log("poll. socket active!")
-	for _, s in ipairs(recvSockets) do
+	log.log("poll. socket active! recvs:%d sends:%d", #recv_sockets, #send_sockets)
+	for _, s in ipairs(recv_sockets) do
 		local session = nw.sessions[s]
 		if session then
-			session:onRecv()
+			session:onrecv()
 		end
 	end
 	
-	for _, s in ipairs(sendSockets) do
+	for _, s in ipairs(send_sockets) do
 		local session = nw.sessions[s]
 		if session then
-			session:onSend()
+			session:onsend()
 		end	
 	end
 end
@@ -88,18 +88,18 @@ end
 function nw.connect(addr, port, timeout)
 	local s = socket.tcp()
 	s:settimeout(timeout or 0)
-	print(s:connect(addr, port))
+	s:connect(addr, port)
 	return s
 end
 
-function nw.addTimer(delay, fun, obj)
+function nw.addtimer(delay, fun, obj)
 	TIMERID = TIMERID + 1
 	local id = TIMERID
 	timers[id] = { timeout = socket.gettime() + delay, func = fun, obj = obj}
 	return id
 end
 
-function nw.delTimer(id)
+function nw.deltimer(id)
 	table.insert(deltimers, id)
 end
 
@@ -111,7 +111,7 @@ function nw.gettime()
 	return socket.gettime()
 end
 
-function nw.doTimer()
+function nw.polltimer()
 	for _, id in ipairs(deltimers) do
 		timers[id] = nil
 	end

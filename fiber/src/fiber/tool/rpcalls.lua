@@ -59,7 +59,7 @@ rpc {
 }
 
 bean {
-	name="SessionInfo", type=7, maxsize=10240,
+	name="SessionInfo", type=7, maxsize=10240, handlers = hssc,
 	{ name="uid", type="int"},
 	{ name="logintime", type="int"},
 }

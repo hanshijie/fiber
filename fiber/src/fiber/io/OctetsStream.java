@@ -405,7 +405,7 @@ public final class OctetsStream {
 		if(x < 0x80)      return marshal1((byte)(x > 0 ? x : 0)); // 0xxx xxxx
 		if(x < 0x4000)    return marshal2(x + 0x8000);            // 10xx xxxx +1B
 		if(x < 0x200000)  return marshal3(x + 0xc00000);          // 110x xxxx +2B
-		if(x < 0x1000000) return marshal4(x + 0xe0000000);        // 1110 xxxx +3B
+		if(x < 0x10000000) return marshal4(x + 0xe0000000);        // 1110 xxxx +3B
 		                  return marshal5((byte)0xf0, x);         // 1111 0000 +4B
 	}
 
@@ -415,7 +415,7 @@ public final class OctetsStream {
 		if(x < 0x80)      { this.tail = p - 1; marshal1((byte)(x > 0 ? x : 0)); this.tail = t; return 1; }
 		if(x < 0x4000)    { this.tail = p - 2; marshal2(x + 0x8000);            this.tail = t; return 2; }
 		if(x < 0x200000)  { this.tail = p - 3; marshal3(x + 0xc00000);          this.tail = t; return 3; }
-		if(x < 0x1000000) { this.tail = p - 4; marshal4(x + 0xe0000000);        this.tail = t; return 4; }
+		if(x < 0x10000000) { this.tail = p - 4; marshal4(x + 0xe0000000);        this.tail = t; return 4; }
 		                  { this.tail = p - 5; marshal5((byte)0xf0, x);         this.tail = t; return 5; }
 	}
 
@@ -424,7 +424,7 @@ public final class OctetsStream {
 		if(x < 0x80)      return 1;
 		if(x < 0x4000)    return 2;
 		if(x < 0x200000)  return 3;
-		if(x < 0x1000000) return 4;
+		if(x < 0x10000000) return 4;
 		                  return 5;
 	}
 

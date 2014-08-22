@@ -5,7 +5,6 @@ local client = net.client("127.0.0.1", 1314, true)
 while true do
 	net.sleep(1)
 	net.poll(0)
-	log.log("round...")
 end
 
 
