@@ -1,9 +1,12 @@
 local log = require "log"
 local assert = assert
+local ipairs = ipairs
+local pairs = pairs
+local type = type
 
-local Bean = { }
-  
-local B = Bean
+Bean = { }
+local Bean = Bean
+
 local stub = {
 	--[[
 		-- bean example.
@@ -33,33 +36,38 @@ local function check_field(obj, base)
 	end
 end
 
-function B.create(type, obj)
+function Bean.create(btype, obj)
 	local o = obj or {}
-	local base = stub[type]
+	local base = stub[btype]
 	if not base then
-		log.err("bean type<%d> not exist", type)
+		log.err("bean type<%d> not exist", btype)
 		return nil 
 	end
 	check_field(o, base)
 	base.__index = base
 	setmetatable(o, base)
+	for k, v in pairs(base) do
+		if type(v) == "table" then
+			o.k = {}
+		end
+	end
 	return o
 end
 
-function B.marshal(stream, type, obj)
-	local o = B.create(type, obj)
+function Bean.marshal(stream, type, obj)
+	local o = Bean.create(type, obj)
 	if not o then return nil end
 	o:_marshal(stream)
 end
 
-function B.unmarshal(stream, type)
-	local o = B.create(type)
+function Bean.unmarshal(stream, type)
+	local o = Bean.create(type)
 	if not o then return nil end
 	o:_unmarshal(stream)
 	return o
 end
 
-function B.register(id, bean)
+function Bean.register(id, bean)
 	assert(id and (not stub[id]) and bean)
 	assert(id == bean._type)
 	assert(bean._name)

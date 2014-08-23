@@ -4,9 +4,11 @@ local char = string.char
 local concat = table.concat
 local insert = table.insert
 local byte = string.byte
-local Bean = require "bean"
+local assert = assert
+local Bean = require("bean")
 
-local Stream = {}
+Stream = {}
+local Stream = Stream
 Stream.__index = Stream
 
 
@@ -58,7 +60,6 @@ function Stream:drain(size)
 		return false
 	end
 end
-
 
 function Stream:flush()
 	self.data = self.data .. concat(self.extra)
@@ -145,48 +146,48 @@ end
 
 function Stream:marshal_int(x)
 	if x >= 0 then
-		    if x < 0x40 then
-		    	self:marshal(x, 1) 
-		    elseif x < 0x2000 then
-		        self:marshal(x + 0x4000, 2)
-		    elseif x < 0x100000 then
-		      	self:marshal(x + 0x600000, 3)
-		    elseif x < 0x8000000 then
-		     	self:marshal(x + 0x70000000, 4)
-		    elseif x < 0x400000000 then
-		    	self:marshal(x + 0x7800000000, 5)
-		    elseif x < 0x20000000000 then
-		        self:marshal(x + 0x7c0000000000, 6)
-		    elseif x < 0x1000000000000 then 
-		    	self:marshal(x + 0x7e000000000000, 7)
-		    elseif x < 0x80000000000000 then
-		     	self:marshal(x + 0x7f00000000000000, 8)
-		    else
-		    	self:marshal(0x7f, 1)
-		    	self:marshal(x + 0x8000000000000000, 8)
-		   	end
+	    if x < 0x40 then
+	    	self:marshal(x, 1) 
+	    elseif x < 0x2000 then
+	        self:marshal(x + 0x4000, 2)
+	    elseif x < 0x100000 then
+	      	self:marshal(x + 0x600000, 3)
+	    elseif x < 0x8000000 then
+	     	self:marshal(x + 0x70000000, 4)
+	    elseif x < 0x400000000 then
+	    	self:marshal(x + 0x7800000000, 5)
+	    elseif x < 0x20000000000 then
+	        self:marshal(x + 0x7c0000000000, 6)
+	    elseif x < 0x1000000000000 then 
+	    	self:marshal(x + 0x7e000000000000, 7)
+	    elseif x < 0x80000000000000 then
+	     	self:marshal(x + 0x7f00000000000000, 8)
+	    else
+	    	self:marshal(0x7f, 1)
+	    	self:marshal(x + 0x8000000000000000, 8)
+	   	end
+	else
+		if x >= -0x40 then
+			self:marshal(x + 0x100, 1)
+		elseif x >= -0x2000 then
+			self:marshal(x + 0xc000, 2)
+		elseif x >= -0x100000 then
+		    self:marshal(x + 0xa00000, 3)
+		elseif x >= -0x8000000 then
+			self:marshal(x + 0x9000000, 4)
+		elseif x >= -0x400000000 then
+			self:marshal(x + 0x880000000, 5)
+		elseif x >= -0x20000000000 then
+			self:marshal(x + 0x84000000000, 6)
+		elseif x >= -0x1000000000000 then
+			self:marshal(x + 0x100000000000, 7)
+		elseif x >= -0x80000000000000 then
+			self:marshal(x + 0x1000000000000, 8)
 		else
-			if x >= -0x40 then
-				self:marshal(x + 0x100, 1)
-			elseif x >= -0x2000 then
-				self:marshal(x + 0xc000, 2)
-			elseif x >= -0x100000 then
-			    self:marshal(x + 0xa00000, 3)
-			elseif x >= -0x8000000 then
-				self:marshal(x + 0x9000000, 4)
-			elseif x >= -0x400000000 then
-				self:marshal(x + 0x880000000, 5)
-			elseif x >= -0x20000000000 then
-				self:marshal(x + 0x84000000000, 6)
-			elseif x >= -0x1000000000000 then
-				self:marshal(x + 0x100000000000, 7)
-			elseif x >= -0x80000000000000 then
-				self:marshal(x + 0x1000000000000, 8)
-			else
-				self:marshal(0x80, 1)
-				self:marshal(x, 8)
-			end
+			self:marshal(0x80, 1)
+			self:marshal(x, 8)
 		end
+	end
 end
 
 function Stream:unmarshal_int()
@@ -206,6 +207,77 @@ function Stream:unmarshal_int()
 	elseif v == 0x81 then v = self:unmarshal(6) - 0x1000000000000
 	end
 	return v
+end
+
+function Stream:marshal_bool(x)
+	self:marshal_int((x and x ~= 0) and 1 or 0)
+end
+
+function Stream:unmarshal_bool()
+	return self:marshal_int() ~= 0 and true or false
+end
+
+function Stream:marshal_byte(x)
+	self:marshal_int(x)
+end
+
+function Stream:unmarshal_byte()
+	return self:unmarshal_int()
+end
+
+function Stream:marshal_short(x)
+	self:marshal_int(x)
+end
+
+function Stream:unmarshal_short()
+	return self:unmarshal_int()
+end
+
+function Stream:marshal_long(x)
+	self:marshal_int(x)
+end
+
+function Stream:unmarshal_long()
+	return self:unmarshal_int()
+end
+
+function Stream:marshal_float(x)
+	self:marshal(x, 4)
+end
+
+function Stream:unmarshal_float()
+	return self:unmarshal(4)
+end
+
+function Stream:marshal_double(x)
+	self:marshal(x, 8)
+end
+
+function Stream:unmarshal_double()
+	return self:unmarshal(8)
+end
+
+function Stream:marshal_string(x)
+	self:marshal_binary(x)
+end
+
+function Stream:unmarshal_string()
+	return self:marshal_binary()
+end
+
+function Stream:marshal_binary(x)
+	self:marshal_uint(#x)
+	self:put(x)
+end
+
+function Stream:unmarshal_binary()
+	local size = self:unmarshal_uint()
+	if self:remain() < size then
+		error("unmarshal fail")
+	end
+	local head = self.head
+	self.head  = head + size
+	return self.data:sub(head + 1, head + size)
 end
 
 function Stream:unmarshalbean(type)
@@ -244,7 +316,5 @@ function test()
 		end
 	end
 end
-
-require "allbeans"
 
 return Stream
