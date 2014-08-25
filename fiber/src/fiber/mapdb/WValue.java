@@ -1,5 +1,7 @@
 package fiber.mapdb;
 
+import fiber.io.Timer;
+
 public final class WValue {
 	private final TValue tvalue;
 	private final Object originValue;
@@ -46,6 +48,7 @@ public final class WValue {
 		if(isModify()) {
 			tvalue.setValue(curValue);
 		}
+		tvalue.setLastAccessTime(Timer.currentTime());
 	}
 	
 	@Override

@@ -41,7 +41,7 @@ public class NetManager extends IOManager {
 			new Runnable() {
 				@Override
 				public void run() {
-					int now = (int) (System.currentTimeMillis() / 1000);
+					int now = Timer.currentTime();
 					for (Map.Entry<Integer, RpcBean<?, ?>> e : _rpcs.entrySet()) {
 						RpcBean<?, ?> rpcbean = e.getValue();
 						if (now - rpcbean.getReqTime() > rpcbean.getTimeout() && _rpcs.remove(e.getKey()) != null) {
@@ -60,6 +60,10 @@ public class NetManager extends IOManager {
 	
 	protected static void schedule(Runnable task, long delay) {
 		rpcExecutor.schedule(task, delay, TimeUnit.SECONDS);
+	}
+	
+	protected static void scheduleAtFixedRate(Runnable task, long initialDelay, long period, TimeUnit unit) {
+		rpcExecutor.scheduleAtFixedRate(task, period, period, TimeUnit.SECONDS);
 	}
 
 	/**

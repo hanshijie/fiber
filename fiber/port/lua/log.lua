@@ -4,7 +4,7 @@ function log.log(...)
 end
 
 function log.err(...)
-	print("[err]" .. string.format(...))
+	print("[err]", string.format(...))
 end
 
 function log.print(...) 

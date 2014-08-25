@@ -1,7 +1,10 @@
 package fiber.mapdb;
 
+import fiber.io.Timer;
+
 public final class TValue {
 	private boolean shrink = false;
+	private int lastAccessTime = Timer.currentTime();
 	private Object value;
 	
 	public TValue() {
@@ -15,10 +18,19 @@ public final class TValue {
 	public Object getValue() {
 		return value;
 	}
+	
 	public void setValue(Object value) {
 		this.value = value;
 	}
 	
+	public final int getLastAccessTime() {
+		return lastAccessTime;
+	}
+
+	public final void setLastAccessTime(int lastAccessTime) {
+		this.lastAccessTime = lastAccessTime;
+	}
+
 	public final boolean isShrink() {
 		return shrink;
 	}
