@@ -62,6 +62,7 @@ bean {
 	name="SessionInfo", type=7, maxsize=10240, handlers = hssc,
 	{ name="uid", type="int"},
 	{ name="logintime", type="int"},
+	{ name="roleids", type="vector<int>"},
 }
 
 bean {

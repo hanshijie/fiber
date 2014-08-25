@@ -37,8 +37,14 @@ public class Server {
 				short port = 1314;
 				ServerManager server = new ServerManager(poller, handlerStub) {
 					protected void onAddSession(IOSession s) {
-						for(int i = 0 ; i < 10 ; i++)
-						s.send(new SessionInfo(12, 18));
+						for(int i = 0 ; i < 10 ; i++) {
+							SessionInfo si = new SessionInfo();
+							si.setuid(12);
+							si.setlogintime(18);
+							si.getroleids().add(100);
+							si.getroleids().add(200);
+							s.send(si);
+						}
 					}
 					
 					protected void onDelSession(IOSession s) {

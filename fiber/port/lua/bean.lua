@@ -3,9 +3,10 @@ local assert = assert
 local ipairs = ipairs
 local pairs = pairs
 local type = type
+local setmetatable = setmetatable
+local error = error
 
-Bean = { }
-local Bean = Bean
+local Bean = {}
 
 local stub = {
 	--[[
@@ -13,8 +14,9 @@ local stub = {
 		1  = {
 			_type = 1,
 			_name = "Response",
-			_marshal = function (os)   end,
-			_unmarshal = function(os)  end,
+			_marshal = function (self, os)   end,
+			_unmarshal = function(self, os)  end,
+			_process = function(self, session) end,
 		},
 	
 	--]]
@@ -45,12 +47,12 @@ function Bean.create(btype, obj)
 	end
 	check_field(o, base)
 	base.__index = base
-	setmetatable(o, base)
 	for k, v in pairs(base) do
-		if type(v) == "table" then
-			o.k = {}
+		if type(v) == "table" and not o[k] then
+			o[k] = {}
 		end
 	end
+	setmetatable(o, base)
 	return o
 end
 

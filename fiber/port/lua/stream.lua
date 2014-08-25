@@ -5,10 +5,15 @@ local concat = table.concat
 local insert = table.insert
 local byte = string.byte
 local assert = assert
+local require = require
+local error = error
+local pairs = pairs
+local ipairs = ipairs
 local Bean = require("bean")
+local setmetatable = setmetatable
+local log = require("log")
 
-Stream = {}
-local Stream = Stream
+local Stream = {}
 Stream.__index = Stream
 
 
@@ -291,28 +296,28 @@ function Stream:marshalbean(bean)
 end
 
 function Stream:dump()
-	print("data:", #self.data)
-	print("head:", self.head)
-	print("extra:", #concat(self.extra))
+	log.print("data:", #self.data)
+	log.print("head:", self.head)
+	log.print("extra:", #concat(self.extra))
 end
 
-function test()
+local function test()
 	local o = Stream.create()
 	for _, v in ipairs({0, 1, 40, 0x80, 0x1000, 0x4000, 0x50000, 0x200000, 0x10000000, 0x70000000}) do
 		o:marshal_uint(v)
 		o:flush()
 		local x = o:unmarshal_uint()
 		if x ~= v then
-			print("###marshal", v, x)
+			log.print("###marshal", v, x)
 		end
 	end
 		for _, v in ipairs({0, 1, 40, 0x80, 0x1000, 0x4000, 0x50000, 0x200000, 0x10000000, 0x70000000, 0x1000000000, 0x10000000000}) do
-		print("=========", v)
+		log.print("=========", v)
 		o:marshal_int(v)
 		o:flush()
 		local x = o:unmarshal_int()
 		if x ~= v then
-			print("###marshal", v, x)
+			log.print("###marshal", v, x)
 		end
 	end
 end

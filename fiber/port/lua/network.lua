@@ -8,30 +8,31 @@ local table = table
 local type = type
 local insert = table.insert
 local setmetatable = setmetatable
+local pcall = pcall
 
-local NetWork = {}
+local Network = {}
 
 
 local TIMERID = 1
 local timers = {}  -- key:id     value = { timeout, function }
 local deltimers = {} -- {id, id, ..}
 
-function NetWork.addtimer(delay, fun, obj)
+function Network.addtimer(delay, fun, obj)
 	TIMERID = TIMERID + 1
 	local id = TIMERID
 	timers[id] = { timeout = socket.gettime() + delay, func = fun, obj = obj}
 	return id
 end
 
-function NetWork.deltimer(id)
+function Network.deltimer(id)
 	table.insert(deltimers, id)
 end
 
-function NetWork.sleep(time)
+function Network.sleep(time)
 	socket.sleep(time)
 end
 
-function NetWork.gettime()
+function Network.gettime()
 	return socket.gettime()
 end
 
@@ -103,7 +104,7 @@ local function connect(addr, port, timeout)
 	return sock
 end
 
-function NetWork.poll(timeout)
+function Network.poll(timeout)
 	polltimer()
 	recvt = do_change(recvt, recvt_change)
 	sendt = do_change(sendt, sendt_change)
@@ -138,9 +139,9 @@ local STATUS_CONNECTING = 4
 
 
 local BACKOFF_INIT = 1
-local BACKOFF_MAX = 32
+local BACKOFF_MAX = 64
 
-local CONNECT_TIMEOUT = CONNECT_TIMEOUT or 3
+local CONNECT_TIMEOUT = CONNECT_TIMEOUT or 30
 
 function Session.create(addr, port, reconnect)
 	local o = {}
@@ -164,7 +165,7 @@ function Session:init(addr, port)
 	self.port = port
 	self.backoff = self.backoff or BACKOFF_INIT
 	sessions[self.socket] = self
-	NetWork.addtimer(CONNECT_TIMEOUT, function (s)
+	Network.addtimer(CONNECT_TIMEOUT, function (s)
 			if s.status == STATUS_CONNECTING then
 				s:abort()
 			end
@@ -200,7 +201,7 @@ function Session:onrecv()
 end
 
 function Session:onsend()
-	log.log("oNetWorkrite")
+	log.log("onwrite")
 	if self.closed then return end
 	if self.status == STATUS_CONNECTING then
 		if not self.socket:getpeername() then
@@ -257,14 +258,13 @@ function Session:decodeprotocol()
 				self:close()
 				return
 			elseif status == DECODE_SUCC then
-				local handler = b._name .. "Handler"
-				local ret, err = pcall(_G[handler], self, b)
+				local ret, err = pcall(b._process, b, self)
 				if not ret then
 					log.err("process <%s> fail! %s", handler, err)
 				end
 			end
 		else
-			log.err("decodeProcotols. err msg:%s", err)
+			log.err("decodeProcotols. err msg:%s", status)
 			os.head = head
 			break
 		end
@@ -358,7 +358,7 @@ function Session:tryreconnect()
 		log.log("[session-%d] don't reconnect", self.id)
 		return
 	end
-	NetWork.addtimer(self.backoff, function (session) session:reconnect()  end, self)
+	Network.addtimer(self.backoff, function (session) session:reconnect()  end, self)
 	self.backoff = self.backoff * 2
 	if self.backoff > BACKOFF_MAX then
 		self.backoff = BACKOFF_MAX
@@ -370,10 +370,10 @@ function Session:reconnect()
 	self:init(self.addr, self.port)
 end
 
-function NetWork.client(addr, port, reconnect)
+function Network.client(addr, port, reconnect)
 	return Session.create(addr, port, reconnect)
 end
 
 require "allbeans"
 
-return NetWork
+return Network

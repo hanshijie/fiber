@@ -1,9 +1,14 @@
+--require("genrpc")
+
+loadfile("genrpc.lua")()
+
 local net = require("network")
 local log = require("log")
+local bean = require("bean")
 
-function SessionInfoHandler(session, data)
+function bean.processSessionInfo(data, session)
 	log.log("SessionInfoHandler. uid:%s logintime:%s", data.uid, data.logintime)
-	session:write({_type = 7, uid = 1218})
+	session:write({_type = 7, uid = 1218, roleids = {1, 2, 3, 4, 5, 6}})
 end
 
 local client = net.client("127.0.0.1", 1314, true)

@@ -10,7 +10,7 @@ local print = print
 
 local namespace = namespace or "fiber"
 
-local beantypes = {}
+local Types = {}
 local typeclass = {}
 local sids = {}
 
@@ -19,6 +19,7 @@ local types = {
  	treemap = true, hashmap = true, hashset = true, treeset = true, vector = true,
  	pvector = true, phashset = true, phashmap = true
  }
+ 
 local function get_basetype(type)
 	local pos = type:find("<", 1, true)
 	type = pos and type:sub(1, pos - 1) or type
@@ -28,7 +29,7 @@ end
 
 function bean(b) 
 	b.type = tostring(b.type)
-	beantypes[b.name] = b
+	Types[b.name] = b
 	sids[b.name] = { name = "xxx", type=b.name, basetype = "bean", sid = b.name, default= "{}"}
 	for i, var in ipairs(b) do
 		var.type = var.type:gsub("%s", "")
@@ -58,8 +59,6 @@ end
 function handlerset(s)
 	return s
 end
-
-
 
 local function get_sidtype(type)
 	return type:gsub(">", ""):gsub("[^%w]", "_")
@@ -113,7 +112,7 @@ tc.vector = merge(tc.binary, {
 	default = function (var) return "{}" end,
 	
 	marshal = function(var, tc) return string.format("os:marshal_uint(#self.%s); for _, v in ipairs(self.%s) do os:marshal_%s(v) end", var.name, var.name, var.value) end,
-	unmarshal = function(var, tc) return string.format("for i = 1, os:unmarshal_uint() do insert(self.%s, os:unmarshal_%s()) end", var.name, var.name, var.value) end,
+	unmarshal = function(var, tc) return string.format("for i = 1, os:unmarshal_uint() do insert(self.%s, os:unmarshal_%s()) end", var.name, var.value) end,
 })
 
 tc.hashset = merge(tc.vector, {
@@ -147,13 +146,13 @@ tc.phashmap = merge(tc.hashmap, {
 
 dofile("../../src/fiber/tool/rpcalls.lua")
 
-function gen()
+local function gen()
 	local c = {}
 	insert(c, [=[
-local Bean = require "bean"
-local Stream = require "stream"
-BeanTypes = {}
-local beantypes = BeanTypes
+local Bean = require("bean")
+local Stream = require("stream")
+
+local Types = {}
 local insert = table.insert
 local pairs = pairs
 local ipairs = ipairs
@@ -167,8 +166,8 @@ end
 
 ]=])
 
-	for name, bean in pairs(beantypes) do
-		insert(c, string.format("beantypes.%s = %s", name, bean.type))
+	for name, bean in pairs(Types) do
+		insert(c, string.format("Types.%s = %s", name, bean.type))
 		if not bean.rpc then
 			local svars = "\n"
 			local smarshal = "\n"
@@ -193,28 +192,33 @@ Bean.register(%s,
 	_unmarshal = function (self, os)
 %s
 	end,
+	_process = function (bean, session) 
+		Bean.process%s(bean, session)
+	end,
 })
 function Stream:marshal_%s(x) x._type = %s; Stream:marshalbean(x) end
 function Stream:unmarshal_%s() return Stream:unmarshalbean(%s) end
-		  ]=], bean.type, bean.type, bean.name, svars, smarshal, sunmarshal, bean.name, bean.type, bean.name, bean.type))
+		  ]=], bean.type, bean.type, bean.name, svars, smarshal, sunmarshal, bean.name, bean.name, bean.type, bean.name, bean.type))
 		end
 	end
 	
-	for name, var in pairs(sids) do
-		
-	
-	end
+	insert(c, "return Types")
 
 	return concat(c, "\n")
 end
 
-function save(content, file)
+local function save(content, file)
 	local f = io.open(file, "w")
 	f:write(content)
 	f:close()
 end
 
 save(gen(), "allbeans.lua")
+
+bean = nil
+rpc = nil
+handler = nil
+handlerset = nil
 
 print("complete!")
 
