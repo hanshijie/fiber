@@ -5,6 +5,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import fiber.io.Const;
 import fiber.io.Log;
 
 public class TaskPool {
@@ -18,19 +19,9 @@ public class TaskPool {
 
 	// 比较关键,而且不会阻塞或者可以保证只阻塞很短时间的任务
 	// 使用noblockExecutor调度.
-	private static ExecutorService noblockExecutor;
-	private static ExecutorService blockExecutor;
-	private static ScheduledExecutorService normalScheduleExecutor;
-	
-	public static void init(int noblockThreadNum, int blockThreadNum, int scheduleThreadNum) {
-		if(noblockExecutor == null) {
-			noblockExecutor = Executors.newFixedThreadPool(noblockThreadNum);
-			blockExecutor = Executors.newFixedThreadPool(blockThreadNum);
-			normalScheduleExecutor = Executors.newScheduledThreadPool(scheduleThreadNum);
-		} else {
-			Log.fatal("TaskPool can't been inited twice!");
-		}
-	}
+	private static final ExecutorService noblockExecutor = Executors.newFixedThreadPool(Const.getProperty("noblock_thread_num", Runtime.getRuntime().availableProcessors()));
+	private static final ExecutorService blockExecutor = Executors.newFixedThreadPool(Const.getProperty("block_thread_num", 64));
+	private static final ScheduledExecutorService normalScheduleExecutor = Executors.newScheduledThreadPool(Const.getProperty("schedule_thread_num", 2));
 	
 	public static void execute(Runnable task) {
 		blockExecutor.execute(task);

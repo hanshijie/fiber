@@ -17,7 +17,7 @@ local Stream = {}
 Stream.__index = Stream
 
 
-function Stream.create(data) 
+function Stream.new(data) 
 	local o = { data = data or "", extra = {}, head = 0 }
 	setmetatable(o, Stream)
 	return o
@@ -41,7 +41,7 @@ function Stream:skip(n)
 end
 
 function Stream:sub(n)
-	return Stream.create(self.data:sub(self.head + 1, self.head + n))
+	return Stream.new(self.data:sub(self.head + 1, self.head + n))
 end
 
 -- put, get, drain 仅用于

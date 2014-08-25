@@ -3,8 +3,6 @@ package fiber.app.server;
 import java.util.Map;
 
 import fiber.bean.SessionInfo;
-import fiber.common.LockPool;
-import fiber.common.TaskPool;
 import fiber.handler.server.AllHandlers;
 import fiber.io.BeanHandler;
 import fiber.io.IOConfig;
@@ -24,8 +22,6 @@ public class Server {
 			}
 			final int logLevel = Integer.parseInt(args[0]);
 			System.setProperty("log_level", Integer.valueOf(logLevel).toString());
-			TaskPool.init(2, 2, 2);
-			LockPool.init(32);
 
 			//final String LUA_FILE = args[2];
 			IOPoller poller = new IOPoller(1);

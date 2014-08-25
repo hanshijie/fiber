@@ -1,5 +1,5 @@
 --require("genrpc")
-
+ 
 loadfile("genrpc.lua")()
 
 local net = require("network")
@@ -11,9 +11,10 @@ function bean.processSessionInfo(data, session)
 	session:write({_type = 7, uid = 1218, roleids = {1, 2, 3, 4, 5, 6}})
 end
 
-local client = net.client("127.0.0.1", 1314, true)
+local client = net.client("client", "127.0.0.1", 1314)
+
 while true do
-	net.sleep(1)
+	net.sleep(0.1)
 	net.poll(0)
 end
 

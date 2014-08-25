@@ -3,7 +3,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import fiber.bean.SessionInfo;
-import fiber.common.LockPool;
 import fiber.common.Marshaller;
 import fiber.common.Wrapper;
 import fiber.io.Bean;
@@ -267,7 +266,6 @@ public class Database {
 	
 	public static void main(String[] args) {
 		System.setProperty("log_level", Integer.valueOf(Log.LOG_ALL).toString());
-		LockPool.init(32);
 		test2();
 		
 	}

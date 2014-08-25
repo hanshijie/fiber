@@ -4,22 +4,16 @@ import java.util.Collection;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import fiber.io.Const;
 import fiber.io.Log;
 
 public final class LockPool {
-	private static LockPool instance;
-	public static void init(int initsize) {
-		if(instance == null) {
-			instance = new LockPool(initsize);
-		} else {
-			Log.fatal("LockPool can't been inited twice. initsize:%d cursize:%d", initsize, instance.locks.length);
-		}
-	}
+	private static final LockPool instance = new LockPool(Const.getProperty("lock_pool_size", 1024 * 8));
 	public static LockPool getInstance() { return instance; }
 	
 	final private Lock[] locks;
 	final int mask;
-	public LockPool(int locksize) {
+	LockPool(int locksize) {
 		if(locksize < 32 || locksize > 1024 * 1024) throw new IllegalArgumentException("Illegle locksize:" + locksize);
 		locksize = probSize(locksize);
 		mask = locksize - 1;

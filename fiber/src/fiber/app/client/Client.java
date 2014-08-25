@@ -3,8 +3,6 @@ package fiber.app.client;
 import java.util.Map;
 import java.util.ArrayList;
 import fiber.bean.UserLogin;
-import fiber.common.LockPool;
-import fiber.common.TaskPool;
 import fiber.handler.client.AllHandlers;
 import fiber.io.BeanHandler;
 import fiber.io.ClientManager;
@@ -23,8 +21,6 @@ public class Client {
 				return;
 			}
 			System.setProperty("log_level", Integer.valueOf(Log.LOG_TRACE).toString());
-			TaskPool.init(2, 2, 2);
-			LockPool.init(32);
 			String addr = args[0];
 			short port = Short.parseShort(args[1]);
 			final int CONNECT_NUM = Integer.parseInt(args[2]);

@@ -114,14 +114,14 @@ function Network.poll(timeout)
 	for _, s in ipairs(recv_sockets) do
 		local session = sessions[s]
 		if session then
-			session:onrecv()
+			session:_onrecv()
 		end
 	end
 	
 	for _, s in ipairs(send_sockets) do
 		local session = sessions[s]
 		if session then
-			session:onsend()
+			session:_onsend()
 		end	
 	end
 end
@@ -141,36 +141,36 @@ local STATUS_CONNECTING = 4
 local BACKOFF_INIT = 1
 local BACKOFF_MAX = 64
 
-local CONNECT_TIMEOUT = CONNECT_TIMEOUT or 30
+local CONNECT_TIMEOUT = 30
 
-function Session.create(addr, port, reconnect)
-	local o = {}
+function Session.new(name)
+	SID = SID + 1
+	local o = { name = name or "Session", id = SID }
 	setmetatable(o, Session)
-	o.enablereconnect = reconnect
-	o:init(addr, port)
 	return o
 end
 
-function Session:init(addr, port)
-	SID = SID + 1
-	self.id = SID
+function Session:connect(addr, port, connect_timeout, reconnect_on_fail, reconnect_backoff)
 	self.closed = false
 	self.status = STATUS_CONNECTING
 	self.socket = connect(addr, port)
-	self.recv_buffer = Stream.create()
-	self.send_buffer = Stream.create()
+	self.recv_buffer = Stream.new()
+	self.send_buffer = Stream.new()
 	self.out_filter = nil
 	self.in_filter = nil
 	self.addr = addr
 	self.port = port
-	self.backoff = self.backoff or BACKOFF_INIT
+	self.connect_timeout = connect_timeout or CONNECT_TIMEOUT
+	self.reconnect_on_fail = reconnect_on_fail ~= false
+	self.backoff = reconnect_backoff or BACKOFF_INIT
 	sessions[self.socket] = self
-	Network.addtimer(CONNECT_TIMEOUT, function (s)
-			if s.status == STATUS_CONNECTING then
-				s:abort()
+	local socket = self.socket
+	Network.addtimer(self.connect_timeout, function (s)
+			if s.status == STATUS_CONNECTING and s.socket == socket then
+				s:_abort()
 			end
 		end, self)
-	self:permitsend()
+	self:_permitsend()
 end
 
 function Session:setinfilter(filter)
@@ -181,36 +181,36 @@ function Session:setoutfilter(filter)
 	self.out_filter = filter
 end
 
-function Session:onrecv()
+function Session:_onrecv()
 	if self.closed then return end
 	local read, err, partial = self.socket:receive()
-	if err == "closed" then
-		log.err(err)
+	if err ~= "timeout" then
+		log.err("%s socket error:%s", self.name, err)
 		self:close()
 		return
 	else
 		read = read or partial
 		if not read then
-			log.log("read nothing. next round")
+			log.log("Session:%s read nothing. next round", self.name)
 			return
 		end
 	end
 	log.log("read bytes:" .. #read)
 	self.recv_buffer:put(self.in_filter and self.in_filter(read) or read)
-	self:decodeprotocol()
+	self:_decodeprotocol()
 end
 
-function Session:onsend()
+function Session:_onsend()
 	log.log("onwrite")
 	if self.closed then return end
 	if self.status == STATUS_CONNECTING then
 		if not self.socket:getpeername() then
-			log.log("connect fail!")
+			log.err("Session:%s [%s:%s] connect fail!", self.name, self.addr, self.port)
 			self.status = STATUS_FAIL
-			self:abort()
+			self:_abort()
 		else
 			self.status = STATUS_CONNECTED
-			self:connect()
+			self:_doneconnect()
 		end
 		return
 	end
@@ -223,14 +223,14 @@ function Session:onsend()
 	end
 	log.log("write bytes:" .. write)
 	if not self.send_buffer:drain(write) then
-		self:forbidsend()
+		self:_forbidsend()
 	end
 end
 
 local DECODE_SUCC = 0
 local DECODE_NOENOUGH = 1
 local DECODE_ERROR = 2
-function Session:decodeprotocol()
+function Session:_decodeprotocol()
 	local os = self.recv_buffer
 	os:flush()
 	local head = os.head
@@ -260,7 +260,7 @@ function Session:decodeprotocol()
 			elseif status == DECODE_SUCC then
 				local ret, err = pcall(b._process, b, self)
 				if not ret then
-					log.err("process <%s> fail! %s", handler, err)
+					log.err("process <%s> fail! %s", b._name, err)
 				end
 			end
 		else
@@ -272,22 +272,22 @@ function Session:decodeprotocol()
 	os:trunct()
 end
 
-function Session:permitrecv()
+function Session:_permitrecv()
 	if self.closed then return end
 	register(self.socket, true)
 end
 
-function Session:forbidrecv()
+function Session:_forbidrecv()
 	if self.closed then return end
 	register(self.socket, false)
 end
 
-function Session:permitsend()
+function Session:_permitsend()
 	if self.closed then return end
 	register(self.socket, nil, true)
 end
 
-function Session:forbidsend()
+function Session:_forbidsend()
 	if self.closed then return end
 	register(self.socket, nil, false)
 end
@@ -295,10 +295,10 @@ end
 function Session:write(data)
 	if type(data) == "string" then
 		self.send_buffer:put(self.out_filter and self.out_filter(data) or data)
-		self:permitsend()
+		self:_permitsend()
 	elseif type(data) == "table" then
-		self:permitsend()
-		local os = Stream.create()
+		self:_permitsend()
+		local os = Stream.new()
 		os:marshalbean(data)
 		local out = self.send_buffer
 		out:marshal_uint(data._type)
@@ -309,10 +309,10 @@ function Session:write(data)
 	end
 end
 
-function Session:connect()
+function Session:_doneconnect()
 	self.backoff = BACKOFF_INIT
-	self:permitrecv()
-	self:forbidsend()
+	self:_permitrecv()
+	self:_forbidsend()
 	self:onconnect()
 end
 
@@ -323,55 +323,57 @@ end
 
 function Session:onclose()
 	log.log("onclose " .. self.id)
-	self:tryreconnect()
+	self:_tryreconnect()
 end
 
 function Session:close()
 	if self.closed then return end
 	self.closed = true
 	self.status = STATUS_CLOSED
-	self:forbidrecv()
-	self:forbidsend()
+	self:_forbidrecv()
+	self:_forbidsend()
 	sessions[self.socket] = nil
 	self.socket:close()
 	self:onclose()
 end
 
-function Session:abort()
+function Session:_abort()
 	if self.closed then return end
 	self.closed = true
 	self.status = STATUS_FAIL
-	self:forbidrecv()
-	self:forbidsend()
+	self:_forbidrecv()
+	self:_forbidsend()
 	sessions[self.socket] = nil
 	self.socket:close()
 	self:onabort()
 end
 
 function Session:onabort()
-	log.log("[session-%d] abort", self.id)
-	self:tryreconnect()
+	log.log("Session:%s abort", self.name)
+	self:_tryreconnect()
 end
 
-function Session:tryreconnect()
-	if not self.enablereconnect then
-		log.log("[session-%d] don't reconnect", self.id)
+function Session:_tryreconnect()
+	if not self.reconnect_on_fail then
+		log.log("Session:%s don't reconnect", self.name)
 		return
 	end
-	Network.addtimer(self.backoff, function (session) session:reconnect()  end, self)
+	Network.addtimer(self.backoff, function (session) session:_reconnect()  end, self)
 	self.backoff = self.backoff * 2
 	if self.backoff > BACKOFF_MAX then
 		self.backoff = BACKOFF_MAX
 	end
 end
 
-function Session:reconnect()
-	log.log("[session-%d] reconnect", self.id)
-	self:init(self.addr, self.port)
+function Session:_reconnect()
+	log.log("Session:%s reconnect", self.name)
+	self:connect(self.addr, self.port, self.connect_timeout, self.reconnect_on_fail, self.backoff)
 end
 
-function Network.client(addr, port, reconnect)
-	return Session.create(addr, port, reconnect)
+function Network.client(name, addr, port, connect_timeout, reconnect_on_fail, reconnect_backoff)
+	local ss = Session.new(name)
+	ss:connect(addr, port, connect_timeout, reconnect_on_fail, reconnect_backoff)
+	return ss
 end
 
 require "allbeans"
