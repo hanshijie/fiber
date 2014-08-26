@@ -1,7 +1,5 @@
+local require = require
 local socket = require(socketlib or "socket")
-local log = require("log")
-local Stream = require("Stream")
-
 local ipairs = ipairs
 local pairs = pairs
 local table = table
@@ -9,6 +7,10 @@ local type = type
 local insert = table.insert
 local setmetatable = setmetatable
 local pcall = pcall
+
+local log = require("log")
+local Bean = require("bean")
+local Stream = require("stream")
 
 local Network = {}
 
@@ -105,12 +107,12 @@ local function connect(addr, port, timeout)
 end
 
 function Network.poll(timeout)
+    Bean.checkrpctimeout(Network.gettime())
 	polltimer()
 	recvt = do_change(recvt, recvt_change)
 	sendt = do_change(sendt, sendt_change)
 	local recv_sockets, send_sockets, err = socket.select(recvt, sendt, timeout)
 	if err then return end
-	log.log("poll. socket active! recvs:%d sends:%d", #recv_sockets, #send_sockets)
 	for _, s in ipairs(recv_sockets) do
 		local session = sessions[s]
 		if session then
@@ -195,13 +197,11 @@ function Session:_onrecv()
 			return
 		end
 	end
-	log.log("read bytes:" .. #read)
 	self.recv_buffer:put(self.in_filter and self.in_filter(read) or read)
 	self:_decodeprotocol()
 end
 
 function Session:_onsend()
-	log.log("onwrite")
 	if self.closed then return end
 	if self.status == STATUS_CONNECTING then
 		if not self.socket:getpeername() then
@@ -215,13 +215,13 @@ function Session:_onsend()
 		return
 	end
 	self.send_buffer:flush()
+	if self.send_buffer:empty() then return end
 	local write, err = self.socket:send(self.send_buffer:get())
 	if not write then
 		log.log(err)
 		self:close()
 		return
 	end
-	log.log("write bytes:" .. write)
 	if not self.send_buffer:drain(write) then
 		self:_forbidsend()
 	end
@@ -312,7 +312,9 @@ end
 function Session:_doneconnect()
 	self.backoff = BACKOFF_INIT
 	self:_permitrecv()
-	self:_forbidsend()
+	if self.send_buffer:size() == 0 then 
+		self:_forbidsend()
+	end
 	self:onconnect()
 end
 
@@ -374,6 +376,16 @@ function Network.client(name, addr, port, connect_timeout, reconnect_on_fail, re
 	local ss = Session.new(name)
 	ss:connect(addr, port, connect_timeout, reconnect_on_fail, reconnect_backoff)
 	return ss
+end
+
+function Session:sendrpc(type, arg, handler)
+	local rpc = Bean.createrpc(type, { arg = arg,})
+	local rpcid = Bean.allocrpcid()
+	rpc._rpcid = rpcid
+	rpc._handler = handler
+	rpc._session = self
+	Bean.addwaitreplyrpc(rpc, rpc._timeout + Network.gettime(), handler)
+	self:write(rpc)
 end
 
 require "allbeans"

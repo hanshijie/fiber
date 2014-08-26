@@ -15,6 +15,9 @@ end
 
 
 Types.Hello = 4
+  
+Bean.registerrpc(4, "Hello", 41, 42, 30)			
+			
 Types.HelloRes = 42
 Bean.register(42, 
 { 

@@ -13,6 +13,7 @@ local Bean = require("bean")
 local setmetatable = setmetatable
 local log = require("log")
 
+
 local Stream = {}
 Stream.__index = Stream
 
@@ -99,6 +100,7 @@ function Stream:marshal(x, n)
 end
 
 function Stream:unmarshal(n)
+    --print("unmarshal:", n)
 	local head = self.head
 	if(head + n > #self.data) then 
 		self:dump()
@@ -122,11 +124,11 @@ end
 function Stream:marshal_uint(x)
 	if x < 0x80 then
 		self:marshal(x > 0 and x or 0, 1)
-	elseif x < 0x4000 then
+	elseif x < 			 0x4000 then
 	    self:marshal(x + 0x8000, 2)
-	elseif x < 0x200000 then  
+	elseif x < 			 0x200000 then  
 		self:marshal(x + 0xc00000, 3)
-	elseif x < 0x10000000 then
+	elseif x < 			 0x10000000 then
 		self:marshal(x + 0xe0000000, 4)
 	else
 		self:marshal(0xf0, 1)
@@ -153,44 +155,50 @@ function Stream:marshal_int(x)
 	if x >= 0 then
 	    if x < 0x40 then
 	    	self:marshal(x, 1) 
-	    elseif x < 0x2000 then
+	    elseif x < 			 0x2000 then
 	        self:marshal(x + 0x4000, 2)
-	    elseif x < 0x100000 then
+	    elseif x < 			 0x100000 then
 	      	self:marshal(x + 0x600000, 3)
-	    elseif x < 0x8000000 then
+	    elseif x < 			 0x8000000 then
 	     	self:marshal(x + 0x70000000, 4)
-	    elseif x < 0x400000000 then
+	    elseif x < 			 0x400000000 then
 	    	self:marshal(x + 0x7800000000, 5)
-	    elseif x < 0x20000000000 then
+	    elseif x < 			 0x20000000000 then
 	        self:marshal(x + 0x7c0000000000, 6)
-	    elseif x < 0x1000000000000 then 
-	    	self:marshal(x + 0x7e000000000000, 7)
-	    elseif x < 0x80000000000000 then
-	     	self:marshal(x + 0x7f00000000000000, 8)
+	    elseif x < 			 0x1000000000000 then 
+            self:marshal(0x7e, 1)
+	    	self:marshal(x, 6)
+	    elseif x < 			 0x10000000000000 then
+            self:marshal(0x7f, 1)
+	     	self:marshal(x, 7)
 	    else
-	    	self:marshal(0x7f, 1)
-	    	self:marshal(x + 0x8000000000000000, 8)
+	    	self:marshal(0x7f7f, 2)
+	    	self:marshal(0xffffffffffff, 6)
 	   	end
 	else
-		if x >= -0x40 then
+		if x >= 			-0x40 then
 			self:marshal(x + 0x100, 1)
-		elseif x >= -0x2000 then
+		elseif x >=         -0x2000 then
 			self:marshal(x + 0xc000, 2)
-		elseif x >= -0x100000 then
+		elseif x >=         -0x100000 then
 		    self:marshal(x + 0xa00000, 3)
-		elseif x >= -0x8000000 then
-			self:marshal(x + 0x9000000, 4)
-		elseif x >= -0x400000000 then
-			self:marshal(x + 0x880000000, 5)
-		elseif x >= -0x20000000000 then
-			self:marshal(x + 0x84000000000, 6)
-		elseif x >= -0x1000000000000 then
-			self:marshal(x + 0x100000000000, 7)
-		elseif x >= -0x80000000000000 then
-			self:marshal(x + 0x1000000000000, 8)
+		elseif x >=         -0x8000000 then
+			self:marshal(x + 0x90000000, 4)
+		elseif x >=         -0x400000000 then
+			self:marshal(x + 0x8800000000, 5)
+		elseif x >=         -0x20000000000 then
+			self:marshal(x + 0x840000000000, 6)
+		elseif x >=         -0x1000000000000 then
+            self:marshal(0x81, 1)
+			self:marshal(x + 0x1000000000000, 6)
+		elseif x >=         -0x10000000000000 then
+            self:marshal(0x80, 1)
+            x = x +          0x10000000000000,
+            self:marshal(x % 0x1000000000000 + 0xf0)
+			self:marshal(x % 0x1000000000000, 6)
 		else
-			self:marshal(0x80, 1)
-			self:marshal(x, 8)
+			self:marshal(0x8010, 1)
+			self:marshal(0x0, 6)
 		end
 	end
 end
@@ -210,6 +218,8 @@ function Stream:unmarshal_int()
 	elseif v >= 0x82 then v = (v + 0x7c) * 0x10000000000 + self:unmarshal(5) - 0x1000000000000
 	elseif v == 0x7e then v = self:unmarshal(6)
 	elseif v == 0x81 then v = self:unmarshal(6) - 0x1000000000000
+    elseif v == 0x7f then v = self:unmarshal(1) if v <  0x10 then v = (v * 0x1000000000000 + self:unmarshal(6)) else self:unmarshal(6); v = 0x10000000000000 end
+    else  v = self:unmarshal(1) if v >= 0xf0 then v = (v - 0xf0) * 0x1000000000000 + self:unmarshal(6) - 0x10000000000000 else self:unmarshal(6); v = -0x10000000000000 end
 	end
 	return v
 end
@@ -219,7 +229,7 @@ function Stream:marshal_bool(x)
 end
 
 function Stream:unmarshal_bool()
-	return self:marshal_int() ~= 0 and true or false
+	return self:unmarshal_int() ~= 0 and true or false
 end
 
 function Stream:marshal_byte(x)
@@ -302,16 +312,18 @@ function Stream:dump()
 end
 
 local function test()
-	local o = Stream.create()
+	local o = Stream.new()
 	for _, v in ipairs({0, 1, 40, 0x80, 0x1000, 0x4000, 0x50000, 0x200000, 0x10000000, 0x70000000}) do
 		o:marshal_uint(v)
 		o:flush()
 		local x = o:unmarshal_uint()
 		if x ~= v then
-			log.print("###marshal", v, x)
+			log.print(">>>marshal", v, x)
 		end
 	end
-		for _, v in ipairs({0, 1, 40, 0x80, 0x1000, 0x4000, 0x50000, 0x200000, 0x10000000, 0x70000000, 0x1000000000, 0x10000000000}) do
+		for _, v in ipairs({0, 1, 40, 0x80, 0x1000, 0x4000, 0x50000, 0x200000, 0x10000000, 0x70000000, 0x1000000000, 0x1000000000000,
+            -1, -0x40, -0x80, -0x1000, -0x4000, -0x10000, -0x80000, -0x400000, -0x2000000, -0x10000000, -0x80000000, 
+            -0x400000000, -0x2000000000, -0x20000000000, -0x200000000000}) do
 		log.print("=========", v)
 		o:marshal_int(v)
 		o:flush()
@@ -321,5 +333,6 @@ local function test()
 		end
 	end
 end
+--test()
 
 return Stream

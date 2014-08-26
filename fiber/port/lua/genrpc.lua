@@ -144,7 +144,7 @@ tc.phashset = merge(tc.hashset, {
 tc.phashmap = merge(tc.hashmap, {
 })
 
-dofile("../../src/fiber/tool/rpcalls.lua")
+dofile("rpcalls.lua")
 
 local function gen()
 	local c = {}
@@ -199,6 +199,10 @@ Bean.register(%s,
 function Stream:marshal_%s(x) x._type = %s; Stream:marshalbean(x) end
 function Stream:unmarshal_%s() return Stream:unmarshalbean(%s) end
 		  ]=], bean.type, bean.type, bean.name, svars, smarshal, sunmarshal, bean.name, bean.name, bean.type, bean.name, bean.type))
+		else 
+			insert(c, string.format([=[  
+Bean.registerrpc(%s, "%s", %s, %s, %s)			
+			]=], bean.type, bean.name, Types[bean.arg].type, Types[bean.res].type, bean.timeout))
 		end
 	end
 	
