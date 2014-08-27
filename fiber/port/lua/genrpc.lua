@@ -144,7 +144,7 @@ tc.phashset = merge(tc.hashset, {
 tc.phashmap = merge(tc.hashmap, {
 })
 
-dofile("rpcalls.lua")
+dofile("../../src/fiber/tool/rpcalls.lua")
 
 local function gen()
 	local c = {}

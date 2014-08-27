@@ -14,63 +14,6 @@ local function tablelength(t)
 end
 
 
-Types.Hello = 4
-  
-Bean.registerrpc(4, "Hello", 41, 42, 30)			
-			
-Types.HelloRes = 42
-Bean.register(42, 
-{ 
-	_type = 42,
-	_name = "HelloRes",
-
-	v1 = false,
-	v3 = 0,
-
-	_marshal = function (self, os)
-
-	os:marshal_bool(self.v1)
-	os:marshal_short(self.v3)
-
-	end,
-	_unmarshal = function (self, os)
-
-	self.v1 = os:unmarshal_bool()
-	self.v3 = os:unmarshal_short()
-
-	end,
-	_process = function (bean, session) 
-		Bean.processHelloRes(bean, session)
-	end,
-})
-function Stream:marshal_HelloRes(x) x._type = 42; Stream:marshalbean(x) end
-function Stream:unmarshal_HelloRes() return Stream:unmarshalbean(42) end
-		  
-Types.HelloArg = 41
-Bean.register(41, 
-{ 
-	_type = 41,
-	_name = "HelloArg",
-
-	v1 = false,
-
-	_marshal = function (self, os)
-
-	os:marshal_bool(self.v1)
-
-	end,
-	_unmarshal = function (self, os)
-
-	self.v1 = os:unmarshal_bool()
-
-	end,
-	_process = function (bean, session) 
-		Bean.processHelloArg(bean, session)
-	end,
-})
-function Stream:marshal_HelloArg(x) x._type = 41; Stream:marshalbean(x) end
-function Stream:unmarshal_HelloArg() return Stream:unmarshalbean(41) end
-		  
 Types.UserLoginRe = 6
 Bean.register(6, 
 { 
@@ -101,6 +44,34 @@ Bean.register(6,
 })
 function Stream:marshal_UserLoginRe(x) x._type = 6; Stream:marshalbean(x) end
 function Stream:unmarshal_UserLoginRe() return Stream:unmarshalbean(6) end
+		  
+Types.HelloRes = 42
+Bean.register(42, 
+{ 
+	_type = 42,
+	_name = "HelloRes",
+
+	v1 = false,
+	v3 = 0,
+
+	_marshal = function (self, os)
+
+	os:marshal_bool(self.v1)
+	os:marshal_short(self.v3)
+
+	end,
+	_unmarshal = function (self, os)
+
+	self.v1 = os:unmarshal_bool()
+	self.v3 = os:unmarshal_short()
+
+	end,
+	_process = function (bean, session) 
+		Bean.processHelloRes(bean, session)
+	end,
+})
+function Stream:marshal_HelloRes(x) x._type = 42; Stream:marshalbean(x) end
+function Stream:unmarshal_HelloRes() return Stream:unmarshalbean(42) end
 		  
 Types.UserLogin = 5
 Bean.register(5, 
@@ -160,31 +131,6 @@ Bean.register(7,
 })
 function Stream:marshal_SessionInfo(x) x._type = 7; Stream:marshalbean(x) end
 function Stream:unmarshal_SessionInfo() return Stream:unmarshalbean(7) end
-		  
-Types.TestBean = 2
-Bean.register(2, 
-{ 
-	_type = 2,
-	_name = "TestBean",
-
-	v1 = false,
-
-	_marshal = function (self, os)
-
-	os:marshal_bool(self.v1)
-
-	end,
-	_unmarshal = function (self, os)
-
-	self.v1 = os:unmarshal_bool()
-
-	end,
-	_process = function (bean, session) 
-		Bean.processTestBean(bean, session)
-	end,
-})
-function Stream:marshal_TestBean(x) x._type = 2; Stream:marshalbean(x) end
-function Stream:unmarshal_TestBean() return Stream:unmarshalbean(2) end
 		  
 Types.TestType = 3
 Bean.register(3, 
@@ -261,5 +207,59 @@ Bean.register(3,
 })
 function Stream:marshal_TestType(x) x._type = 3; Stream:marshalbean(x) end
 function Stream:unmarshal_TestType() return Stream:unmarshalbean(3) end
+		  
+Types.Hello = 4
+  
+Bean.registerrpc(4, "Hello", 41, 42, 30)			
+			
+Types.HelloArg = 41
+Bean.register(41, 
+{ 
+	_type = 41,
+	_name = "HelloArg",
+
+	v1 = false,
+
+	_marshal = function (self, os)
+
+	os:marshal_bool(self.v1)
+
+	end,
+	_unmarshal = function (self, os)
+
+	self.v1 = os:unmarshal_bool()
+
+	end,
+	_process = function (bean, session) 
+		Bean.processHelloArg(bean, session)
+	end,
+})
+function Stream:marshal_HelloArg(x) x._type = 41; Stream:marshalbean(x) end
+function Stream:unmarshal_HelloArg() return Stream:unmarshalbean(41) end
+		  
+Types.TestBean = 2
+Bean.register(2, 
+{ 
+	_type = 2,
+	_name = "TestBean",
+
+	v1 = false,
+
+	_marshal = function (self, os)
+
+	os:marshal_bool(self.v1)
+
+	end,
+	_unmarshal = function (self, os)
+
+	self.v1 = os:unmarshal_bool()
+
+	end,
+	_process = function (bean, session) 
+		Bean.processTestBean(bean, session)
+	end,
+})
+function Stream:marshal_TestBean(x) x._type = 2; Stream:marshalbean(x) end
+function Stream:unmarshal_TestBean() return Stream:unmarshalbean(2) end
 		  
 return Types
