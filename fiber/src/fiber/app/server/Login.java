@@ -19,7 +19,7 @@ public class Login {
 		
 		int sid = session.getId();
 		log.trace("UserLogin uid:%d sid:%d", arg.getuid(), sid);
-		WrapperSessionInfo w = Database.getSession(sid);
+		WrapperSessionInfo w = AllTable.getSession(sid);
 		UserLoginRe re = new UserLoginRe();
 		if(!w.isNULL() || sid % 2 == 0) RetException.trigger(sid);
 		w.assign(new SessionInfo());

@@ -15,18 +15,22 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
+import com.sleepycat.je.Cursor;
 import com.sleepycat.je.Database;
 import com.sleepycat.je.DatabaseConfig;
+import com.sleepycat.je.DatabaseEntry;
 import com.sleepycat.je.Environment;
 import com.sleepycat.je.EnvironmentConfig;
+import com.sleepycat.je.LockMode;
+import com.sleepycat.je.OperationStatus;
 import com.sleepycat.je.Transaction;
 import com.sleepycat.je.TransactionConfig;
 import com.sleepycat.je.util.DbBackup;
 
 import fiber.io.Log;
+import fiber.io.Octets;
 import fiber.io.Timer;
 
 public class BDBStorage {
@@ -67,17 +71,13 @@ public class BDBStorage {
 	
 	public BDBStorage(BDBConfig conf) {
 		this.closed = false;
-		// 如果数据库根目录不存在,则创建之
+		// if environment root directory not exists, we create it.
 		this.root = conf.getEnvRoot();
 		File fd = new File(this.root);
 		if (!fd.exists()) {
 			fd.mkdirs();
 		}
 		this.backupRoot = conf.getBackupRoot().isEmpty() ? this.root + "/backup" : conf.getBackupRoot();
-		fd = new File(this.backupRoot);
-		if(!fd.exists()) {
-			fd.mkdirs();
-		}
 		this.incrementalBackupInterval = conf.getIncrementalBackupInterval();
 		this.fullBackupInterval = conf.getFullBackupInterval();
 	        
@@ -133,6 +133,7 @@ public class BDBStorage {
 						now = Timer.currentTime();
 						Thread.sleep((nextBackupTime - now) * 1000);
 						Log.trace("BDBStorage.backup  active.");
+						env.flushLog(true);
 						if(nextIncBackupTime <= now) {
 							nextIncBackupTime = now + incrementalBackupInterval;
 							String incrementalBackupDir = String.format("%s/inc-%s", backupRoot ,timeFormat.format(new Date()));
@@ -190,16 +191,6 @@ public class BDBStorage {
 				}
 			});
 	}
-	
-/*
-	public void reloadConfig(BDBConfig conf) {
-		for(Map.Entry<Integer, String> e : conf.getDatabases().entrySet()) {
-			if(!this.databases.containsKey(e.getKey())) {
-				addTable(e.getKey(), e.getValue());
-			}
-		}
-	}
-*/
 	
 	public void addTable(int dbid, String dbname) {
 		Database db = this.env.openDatabase(null, dbname, this.dbConf);
@@ -260,6 +251,33 @@ public class BDBStorage {
 		}
 	}
 	
+	public interface Walk {
+		boolean onProcess(Database table, Octets key, Octets value);
+	}
+	
+	public void walk(int tableid, Walk w) {
+		walk(tableid, Octets.EMPTY, w);
+	}
+	
+	public void walk(int tableid, Octets begin, Walk w) {
+		Table table = getTable(tableid);
+		table.wlock.lock();
+		try {
+			Database db = table.getDatabase();
+			Cursor cursor = db.openCursor(null, null);
+			DatabaseEntry key = new DatabaseEntry(begin.array());
+			DatabaseEntry value = new DatabaseEntry();
+			OperationStatus status = cursor.getSearchKeyRange(key, value, LockMode.READ_UNCOMMITTED);
+			for( ; status == OperationStatus.SUCCESS ; status = cursor.getNext(key, value, LockMode.READ_UNCOMMITTED)) {
+				Octets okey = Octets.create(key.getData(), key.getSize());
+				Octets ovalue = Octets.create(value.getData(), value.getSize());
+				if(!w.onProcess(db, okey, ovalue)) break;
+			}
+		} finally {
+			table.wlock.lock();
+		}
+	}
+	
 	private static BDBStorage instance;
 	
 	public static void init(BDBConfig conf) {
@@ -268,28 +286,24 @@ public class BDBStorage {
 	}
 	
 	public void shutdown() {
+		Log.notice("BDBStorage.shutdown. begin.");
 		close();
+		Log.notice("BDBStorage.shutdown end.");
 	}
 	
 	synchronized public void close() {
 		if(this.closed) return;
 		this.closed = true;
-		Log.trace("BDBStorage. shutdown. begin.");
 		for (Map.Entry<Integer, Table> e : this.databases.entrySet()) {
 			Database db = e.getValue().getDatabase();
 			Lock lock = e.getValue().getWlock();
 			int tableid = e.getKey();
-			lock.lock();
-			try {
-				Log.trace("db:%d close begin.", tableid);
-				db.close();
-				Log.trace("db:%d close finish.", tableid);
-			} finally {
-				lock.unlock();
-			}
+			lock.lock(); // never unlock this locks to forbid another operations on closed databases.
+			Log.notice("db:%d close begin.", tableid);
+			db.close();
+			Log.notice("db:%d close finish.", tableid);
 		}
 		this.env.close();
-		Log.trace("BDBStorage. shutdown finish.");
 	}
 	
 	synchronized public long backup(String backupDir, long lastFileCopiedInPrevBackup) throws IOException {
@@ -305,11 +319,10 @@ public class BDBStorage {
 	    backupHelper.startBackup();
 	    try {
 	        String[] filesForBackup = backupHelper.getLogFilesInBackupSet();
-
 	        for(String file : filesForBackup) {
 	        	String src = this.root + "/" + file;
 	        	String dst = backupDir + "/" + file;
-	        	Files.copy(new File(src).toPath(), new File(dst).toPath(), REPLACE_EXISTING);
+	        	Files.copy(Paths.get(src), Paths.get(dst), REPLACE_EXISTING);
 	        }
 
 	        lastFileCopiedInPrevBackup = backupHelper.getLastFileInBackupSet();

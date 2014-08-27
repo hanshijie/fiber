@@ -56,7 +56,14 @@ public abstract class Procedure implements Runnable {
 		} catch (RetException ret) {
 			this.onRetError(ret.getRetcode(), ret.getContent());
 		} catch(Exception e) {
-			this.onException(e);
+			// 如果在script engine里触发的exception,可能会被重新包装过.故.
+			Throwable t = e.getCause();
+			if(t instanceof RetException) {
+				RetException ret = (RetException)t;
+				this.onRetError(ret.getRetcode(), ret.getContent());
+			} else {
+				this.onException(e);
+			}
 		} finally {
 			this.end();
 		}
@@ -69,8 +76,9 @@ public abstract class Procedure implements Runnable {
 	}
 	protected void onException(Exception e) {
 		Log.err("%s.onException. exception:%s", this, e);
+		e.printStackTrace();
 	}
 	protected void onFail() {
-		Log.err("%s.onFail.", this);
+		Log.alert("%s.onFail.", this);
 	}
 }

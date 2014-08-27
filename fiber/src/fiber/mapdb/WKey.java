@@ -32,9 +32,13 @@ public final class WKey {
 		}
 	}
 	
+	public final static int keyHashCode(int tableid, Object key) {
+		return tableid * 31 + key.hashCode();
+	}
+	
 	@Override
 	public int hashCode() {
-		return this.getTableid() * 31 + key.hashCode();
+		return keyHashCode(this.getTableid(), key);
 	}
 	
 	@Override

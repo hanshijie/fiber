@@ -5,7 +5,7 @@ import fiber.io.Log;
 public class TestBean {
 
 	public static void main(String[] args) throws Exception {
-		
+		Log.trace("%s", null instanceof Integer);
 		long N = 10000000;
 		long M = 10;
 		for(int j = 0 ; j < M ; j++) {

@@ -8,7 +8,7 @@ import com.sleepycat.je.Durability;
 public final class BDBConfig {
 	private String envRoot;
 
-	private Map<Integer, String> databases;
+	private Map<Integer, String> databases; // { id => name }
 	private long cacheSize;
 	private Durability envDurability;
 	private Durability txnDurability;
@@ -18,14 +18,14 @@ public final class BDBConfig {
 	private int fullBackupInterval;
 	
 	public BDBConfig() {
-		this.envRoot = "";
+		this.envRoot = "berkeleydb";
 		this.databases = new TreeMap<Integer, String>();
 		this.cacheSize = 0;
 		this.envDurability = Durability.COMMIT_NO_SYNC;
 		this.txnDurability = Durability.COMMIT_NO_SYNC;
-		this.backupRoot = "";
-		this.incrementalBackupInterval = 0;
-		this.fullBackupInterval = 0;
+		this.backupRoot = this.envRoot + "/" + "backup";
+		this.incrementalBackupInterval = 1800;
+		this.fullBackupInterval = 86400;
 	}
 
 	public final String getEnvRoot() {

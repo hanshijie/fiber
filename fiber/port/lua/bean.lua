@@ -102,7 +102,7 @@ function Bean.checkrpctimeout(now)
             if not handler then
               log.err("rpc Bean.%s undefine", handlername)
             else
-                ret, err = pcall(handler, rpc.arg, rpc._session)
+                local ret, err = pcall(handler, rpc.arg, rpc._session)
                 if not ret then
                     log.err("Bean.%s process fail. err:%s", handlername, err)
                 end

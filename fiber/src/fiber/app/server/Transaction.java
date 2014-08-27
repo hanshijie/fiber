@@ -26,20 +26,46 @@ public class Transaction extends fiber.mapdb.Transaction {
 	private final static Lock waitCommitReadLock = waitCommitRWLock.readLock();
 	private final static Lock waitCommitWriteLock = waitCommitRWLock.writeLock();
 	private static ConcurrentHashMap<WKey, Object> waitCommitDataMap = new ConcurrentHashMap<WKey, Object>();
+	private static ConcurrentHashMap<WKey, Object> inCommitDataMap = null;
 
 	public static Map<WKey, Object> getWaitCommitDataMap() {
-		waitCommitReadLock.lock();
+		Lock lock = waitCommitWriteLock;
+		lock.lock();
 		try{
-			Map<WKey, Object> inCommitDataMap = waitCommitDataMap;
+			assert(inCommitDataMap == null);
+			if(inCommitDataMap != null) return inCommitDataMap;
+			inCommitDataMap = waitCommitDataMap;
 			waitCommitDataMap = new ConcurrentHashMap<WKey, Object>();
 			return inCommitDataMap;
 		} finally {
-			waitCommitReadLock.unlock();
+			lock.unlock();
+		}
+	}
+	
+	public static void doneCommit() {
+		assert(inCommitDataMap != null);
+		Lock lock = waitCommitReadLock;
+		lock.lock();
+		try {
+			inCommitDataMap = null;
+		} finally {
+			lock.unlock();
+		}
+	}
+	
+	public static boolean isDirty(WKey key) {
+		Lock lock = waitCommitReadLock;
+		lock.lock();
+		try {
+			return waitCommitDataMap.contains(key) || (inCommitDataMap != null && inCommitDataMap.contains(key));
+		} finally {
+			lock.unlock();
 		}
 	}
 
 	protected void commitModifyData() {
-		waitCommitWriteLock.lock();
+		Lock lock = waitCommitReadLock;
+		lock.lock();
 		try{
 			for(Map.Entry<WKey, WValue> e : this.getDataMap().entrySet()) {
 				WKey key = e.getKey();
@@ -50,7 +76,7 @@ public class Transaction extends fiber.mapdb.Transaction {
 				}
 			}
 		} finally {
-			waitCommitWriteLock.unlock();
+			lock.unlock();
 		}
 	}
 }

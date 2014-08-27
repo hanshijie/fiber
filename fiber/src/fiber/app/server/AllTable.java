@@ -17,7 +17,7 @@ import fiber.mapdb.WValue;
 import fiber.bean.*;
 import static fiber.bean._.*;
 
-public class Database {
+public class AllTable {
 	private final static Map<Integer, Table> tables = new HashMap<Integer, Table>();
 	public static Map<Integer, Table> getTables() { return tables; }
 	public static Table getTable(int tableid) { return tables.get(tableid); }
@@ -129,9 +129,9 @@ public class Database {
 	/////////////////////////////////////////////////////////
 	//  Table Class defines 
 	/////////////////////////////////////////////////////////
-	public static class IntIntTable extends Table {
-		public IntIntTable(int id, boolean persist) {
-			super(id, persist, IntMarshaller, IntMarshaller);
+	public static class IntIntTable extends TableMem {
+		public IntIntTable(int id, boolean persist, int maxsize) {
+			super(id, persist, maxsize, IntMarshaller, IntMarshaller);
 		}
 	}
 	
@@ -144,8 +144,8 @@ public class Database {
 	public final static Table tSession;
 
 	static {
-		register(tUser = new IntIntTable(1, false));
-		register(tSession = new Table(2, false, IntMarshaller, new BeanMarshaller(SessionInfo.STUB)));
+		register(tUser = new IntIntTable(1, false, 1000 * 1000));
+		register(tSession = new TableMem(2, false, 1000 * 1000, IntMarshaller, new BeanMarshaller(SessionInfo.STUB)));
 	}
 	
 	/////////////////////////////////////////////////////////
