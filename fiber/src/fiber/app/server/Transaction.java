@@ -25,10 +25,10 @@ public class Transaction extends fiber.mapdb.AbstractTransaction {
 	private final static ReadWriteLock waitCommitRWLock = new ReentrantReadWriteLock();
 	private final static Lock waitCommitReadLock = waitCommitRWLock.readLock();
 	private final static Lock waitCommitWriteLock = waitCommitRWLock.writeLock();
-	private static ConcurrentHashMap<WKey, Object> waitCommitDataMap = new ConcurrentHashMap<WKey, Object>();
-	private static ConcurrentHashMap<WKey, Object> inCommitDataMap = null;
+	private static ConcurrentHashMap<WKey, WValue> waitCommitDataMap = new ConcurrentHashMap<WKey, WValue>();
+	private static ConcurrentHashMap<WKey, WValue> inCommitDataMap = null;
 
-	public static Map<WKey, Object> getWaitCommitDataMap() {
+	public static Map<WKey, WValue> getWaitCommitDataMap() {
 		Lock lock = waitCommitWriteLock;
 		lock.lock();
 		try{
@@ -37,7 +37,7 @@ public class Transaction extends fiber.mapdb.AbstractTransaction {
 				return inCommitDataMap;
 			}
 			inCommitDataMap = waitCommitDataMap;
-			waitCommitDataMap = new ConcurrentHashMap<WKey, Object>();
+			waitCommitDataMap = new ConcurrentHashMap<WKey, WValue>();
 			Log.notice("=====> new inCommitDataMap. size:%d", inCommitDataMap.size());
 			return inCommitDataMap;
 		} finally {
@@ -75,8 +75,8 @@ public class Transaction extends fiber.mapdb.AbstractTransaction {
 				WKey key = e.getKey();
 				WValue value = e.getValue();
 				if(value.isModify() && key.getTable().isPersist()) {
-					waitCommitDataMap.put(key, value.getCurValue());
-					Log.info("waitCommitMap.put %s=>%s", key, value.getCurValue());
+					waitCommitDataMap.put(key, value);
+					Log.info("waitCommitMap.put [%s]=>{origin:%s, cur:%s}", key, value.getOriginValue(), value.getCurValue());
 				}
 			}
 		} finally {

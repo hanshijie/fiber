@@ -41,7 +41,7 @@ public class TablePer extends Table {
 	protected Object loadValue(Object key) throws Exception {
 		OctetsStream os = OctetsStream.create(8);
 		this.marshalKey(os, key);
-		Octets ovalue = G.storage.getData(this.getId(), os.toOctets());
+		Octets ovalue = G.storage.get(this.getId(), os.toOctets());
 		if(ovalue == null) return null;
 		OctetsStream vos = OctetsStream.wrap(ovalue);
 		Object value = this.unmarshalValue(vos);

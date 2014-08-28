@@ -7,11 +7,13 @@ import fiber.io.Octets;
 import fiber.mapdb.Pair;
 
 public abstract class Storage {
-	public abstract Octets getData(int tableid, Octets key);
-	public abstract boolean putData(int tableid, Octets key, Octets value);
+	public abstract Octets get(int tableid, Octets key);
+	public abstract boolean put(int tableid, Octets key, Octets value);
 	
-	public abstract Map<Integer, ArrayList<Octets>> getDatas(Map<Integer, ArrayList<Octets>> tableDatasMap);
-	public abstract boolean putDatas(Map<Integer, ArrayList<Pair>> tableDatasMap);
+	public abstract Map<Integer, ArrayList<Octets>> get(Map<Integer, ArrayList<Octets>> tableDatasMap);
+	public abstract boolean put(Map<Integer, ArrayList<Pair>> tableDatasMap);
+	
+	public abstract boolean del(int tableid, Octets key);
 	
 	public abstract void walk(int tableid, Octets begin, Walker w);
 	public void walk(int tableid, Walker w) { walk(tableid, Octets.EMPTY, w); }

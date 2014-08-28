@@ -48,17 +48,19 @@ public class AllTable {
 	public static void flush() {
 		synchronized(flushLock) {
 			Log.trace("======> Transaction. flush begin");
-			Map<WKey, Object> data = Transaction.getWaitCommitDataMap();
+			Map<WKey, WValue> data = Transaction.getWaitCommitDataMap();
 			TreeMap<Integer, ArrayList<Pair>> tableDatasMap = new TreeMap<Integer, ArrayList<Pair>>();
-			for(Map.Entry<WKey, Object> e : data.entrySet()) {
+			for(Map.Entry<WKey, WValue> e : data.entrySet()) {
 				WKey wkey = e.getKey();
 				Object key = wkey.getKey();
-				Object value = e.getValue();
+				Object value = e.getValue().getCurValue();
 				Table table = wkey.getTable();
 				kos.clear();
 				table.marshalKey(kos, key);
 				vos.clear();
-				table.marshalValue(vos, value);
+				if(value != null) {
+					table.marshalValue(vos, value);
+				}
 				ArrayList<Pair> tableDatas = tableDatasMap.get(table.getId());
 				if(tableDatas == null) {
 					tableDatas = new ArrayList<Pair>();
@@ -66,7 +68,7 @@ public class AllTable {
 				}
 				tableDatas.add(new Pair(kos.toOctets(), vos.toOctets()));
 			}
-			if(G.storage.putDatas(tableDatasMap)) {		
+			if(G.storage.put(tableDatasMap)) {		
 				Transaction.doneCommit();
 			}
 			Log.trace("======> Transaction.flush end");
@@ -330,6 +332,7 @@ public class AllTable {
 		}
 		txn.commit();
 		txn.end();
+		flush();
 		
 		Log.trace("===============>");
 		for(int i = 0 ; i < 20 ; i++) {
@@ -337,9 +340,26 @@ public class AllTable {
 			 Log.trace("User[%d] = %s", i, wi);
 			 WrapperSessionInfo ws = getSession(i);
 			 Log.trace("SessionInfo[%d] = %s", i, ws);
+			 ws.setlogintime(i * 1218);
+			 ws.setuid(i);
+			 ws.getroleids().add(i + 1000);
+			 ws.getroleids().add(i + 2000);
 		}
 		txn.commit();
 		txn.end();
+		flush();
+		
+		Log.trace("===============>");
+		for(int i = 0 ; i < 20 ; i++) {
+			 WrapperInt wi = getUser(i);
+			 Log.trace("User[%d] = %s", i, wi);
+			 wi.assign(null);
+			 WrapperSessionInfo ws = getSession(i);
+			 Log.trace("SessionInfo[%d] = %s", i, ws);
+			 ws.assign(null);
+		}
+		txn.commit();
+		txn.end();	
 		
 		flush();
 	}

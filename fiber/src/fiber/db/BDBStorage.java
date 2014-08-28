@@ -257,9 +257,17 @@ public final class BDBStorage extends Storage {
 	}
 	
 	public boolean putData(Transaction txn , Database db, Octets key, Octets value) {
+		Log.debug("BDBStorage.putData  key:%s", key.dump());
 		DatabaseEntry dkey = new DatabaseEntry(key.array());
 		DatabaseEntry dvalue = new DatabaseEntry(value.array());
 		OperationStatus status = db.put(txn, dkey, dvalue);
+		return (status == OperationStatus.SUCCESS);
+	}
+	
+	public boolean delData(Transaction txn , Database db, Octets key) {
+		Log.debug("BDBStorage. delData. key:%s", key.dump());
+		DatabaseEntry dkey = new DatabaseEntry(key.array());
+		OperationStatus status = db.delete(txn, dkey);
 		return (status == OperationStatus.SUCCESS);
 	}
 	
@@ -356,7 +364,7 @@ public final class BDBStorage extends Storage {
 	}
 
 	@Override
-	public Octets getData(int tableid, Octets key) {
+	public Octets get(int tableid, Octets key) {
 		DTable dTable = getTable(tableid);
 		Lock lock = dTable.rlock;
 		lock.lock();
@@ -369,7 +377,7 @@ public final class BDBStorage extends Storage {
 	}
 	
 	@Override
-	public boolean putData(int tableid, Octets key, Octets value) {
+	public boolean put(int tableid, Octets key, Octets value) {
 		DTable dTable = getTable(tableid);
 		Lock lock = dTable.wlock;
 		lock.lock();
@@ -382,13 +390,13 @@ public final class BDBStorage extends Storage {
 	}
 	
 	@Override
-	public Map<Integer, ArrayList<Octets>> getDatas(
+	public Map<Integer, ArrayList<Octets>> get(
 			Map<Integer, ArrayList<Octets>> tableDatasMap) {
 		return null;
 	}
 	
 	@Override
-	public boolean putDatas(Map<Integer, ArrayList<Pair>> tableDatasMap) {
+	public boolean put(Map<Integer, ArrayList<Pair>> tableDatasMap) {
 		TreeMap<Integer, Boolean> locks = new TreeMap<Integer, Boolean>();
 		for(Integer tableid : tableDatasMap.keySet()) {
 			locks.put(tableid, false); // write lock.
@@ -401,7 +409,13 @@ public final class BDBStorage extends Storage {
 				DTable table = this.getTable(tableid);
 				Database db = table.getDatabase();
 				for(Pair pair : e.getValue()) {
-					this.putData(txn, db, pair.getKey(), pair.getValue());
+					// we presume value which is empty Octets means we should delete it.
+					Octets value = pair.getValue();
+					if(!value.empty()) {
+						this.putData(txn, db, pair.getKey(), pair.getValue());
+					} else {
+						this.delData(txn, db, pair.getKey());
+					}
 				}
 			}
 			txn.commit();
@@ -415,6 +429,19 @@ public final class BDBStorage extends Storage {
 			return false;
 		} finally {
 			unlockDBs(locks);
+		}
+	}
+
+	@Override
+	public boolean del(int tableid, Octets key) {
+		DTable dTable = getTable(tableid);
+		Lock lock = dTable.wlock;
+		lock.lock();
+		try {
+			Database db = dTable.getDatabase();
+			return delData(null, db, key);
+		} finally {
+			lock.unlock();
 		}
 	}
 	
