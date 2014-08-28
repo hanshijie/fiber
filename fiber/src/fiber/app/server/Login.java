@@ -7,8 +7,8 @@ import fiber.bean._.WrapperSessionInfo;
 import fiber.common.RetException;
 import fiber.io.IOSession;
 import fiber.io.Timer;
-import fiber.mapdb.Transaction.Dispatcher;
-import fiber.mapdb.Transaction.Logger;
+import fiber.mapdb.AbstractTransaction.Dispatcher;
+import fiber.mapdb.AbstractTransaction.Logger;
 
 public class Login {
 

@@ -2,16 +2,16 @@ package fiber.mapdb;
 
 import fiber.common.RetException;
 import fiber.io.Log;
-import fiber.mapdb.Transaction.Dispatcher;
-import fiber.mapdb.Transaction.Logger;
+import fiber.mapdb.AbstractTransaction.Dispatcher;
+import fiber.mapdb.AbstractTransaction.Logger;
 
-public abstract class Procedure implements Runnable {
+public abstract class AbstractProcedure implements Runnable {
 	private final int maxRedoCount;
-	public Procedure(int maxRedoCount) {
+	public AbstractProcedure(int maxRedoCount) {
 		this.maxRedoCount = maxRedoCount;
 	}
 	
-	public Procedure() {
+	public AbstractProcedure() {
 		this(10);
 	}
 	
@@ -33,7 +33,7 @@ public abstract class Procedure implements Runnable {
 		Log.info("%s. procedure:%s end.", Thread.currentThread(), this);
 	}
 	
-	protected Transaction txn;
+	protected AbstractTransaction txn;
 	protected Logger log;
 	protected Dispatcher net;
 	public final void run() {

@@ -15,12 +15,14 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 import com.sleepycat.je.Cursor;
 import com.sleepycat.je.Database;
 import com.sleepycat.je.DatabaseConfig;
 import com.sleepycat.je.DatabaseEntry;
+import com.sleepycat.je.DatabaseException;
 import com.sleepycat.je.Environment;
 import com.sleepycat.je.EnvironmentConfig;
 import com.sleepycat.je.LockMode;
@@ -32,8 +34,13 @@ import com.sleepycat.je.util.DbBackup;
 import fiber.io.Log;
 import fiber.io.Octets;
 import fiber.io.Timer;
+import fiber.mapdb.Pair;
 
-public class BDBStorage {
+public final class BDBStorage extends Storage {
+	public static BDBStorage create(BDBConfig conf) {
+		return new BDBStorage(conf);
+	}
+	
 	boolean closed;
 	
 	final EnvironmentConfig envConf;
@@ -47,11 +54,11 @@ public class BDBStorage {
 	final int incrementalBackupInterval;
 	final int fullBackupInterval;
 	
-	public static final class Table {
+	public static final class DTable {
 		private final Database database;
 		private final Lock rlock;
 		private final Lock wlock;
-		public Table(Database db, Lock r, Lock w) {
+		public DTable(Database db, Lock r, Lock w) {
 			this.database = db;
 			this.rlock = r;
 			this.wlock = w;
@@ -67,9 +74,9 @@ public class BDBStorage {
 		}
 	}
 	
-	Map<Integer, Table> databases;
+	Map<Integer, DTable> databases;
 	
-	public BDBStorage(BDBConfig conf) {
+	BDBStorage(BDBConfig conf) {
 		this.closed = false;
 		// if environment root directory not exists, we create it.
 		this.root = conf.getEnvRoot();
@@ -102,7 +109,7 @@ public class BDBStorage {
 		
 		this.env = new Environment(new File(root), envConf);
 		
-		this.databases = new HashMap<Integer, Table>();
+		this.databases = new HashMap<Integer, DTable>();
 		for(Map.Entry<Integer, String> e : conf.getDatabases().entrySet()) {
 			addTable(e.getKey(), e.getValue());
 		}
@@ -156,7 +163,6 @@ public class BDBStorage {
 				}
 			}
 
-
 			final Charset ENCODING = StandardCharsets.UTF_8;
 			private long loadFromConfFile(String backupConfFile) {
 				try {
@@ -178,28 +184,16 @@ public class BDBStorage {
 				}
 			}
 		}.start();
-		
-		Runtime.getRuntime().addShutdownHook(
-			new Thread("JVMShutDown.Storage") {
-				@Override
-				public void run() {
-					try {
-						shutdown();
-					} catch (Exception e) {
-						Log.fatal("JVMShutDown.Storage: close error. exception:%s", e);
-					}
-				}
-			});
 	}
 	
 	public void addTable(int dbid, String dbname) {
 		Database db = this.env.openDatabase(null, dbname, this.dbConf);
 		Log.trace("database open. id:%d name:%s", dbid, dbname);
 		ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
-		this.databases.put(dbid, new Table(db, lock.readLock(), lock.writeLock()));	
+		this.databases.put(dbid, new DTable(db, lock.readLock(), lock.writeLock()));	
 	}
 	
-	public Table getTable(int tableid) {
+	public DTable getTable(int tableid) {
 		return this.databases.get(tableid);
 	}
 	
@@ -219,7 +213,7 @@ public class BDBStorage {
 		lockDB(getTable(tableid), readlock);
 	}
 	
-	public void lockDB(Table db, boolean readlock) {
+	public void lockDB(DTable db, boolean readlock) {
 		if(readlock) {
 			db.rlock.lock();
 		} else {
@@ -231,7 +225,7 @@ public class BDBStorage {
 		unlockDB(getTable(tableid), readlock);
 	}
 	
-	public void unlockDB(Table db, boolean readlock) {
+	public void unlockDB(DTable db, boolean readlock) {
 		if(readlock) {
 			db.rlock.unlock();
 		} else {
@@ -251,19 +245,30 @@ public class BDBStorage {
 		}
 	}
 	
-	public interface Walk {
-		boolean onProcess(Database table, Octets key, Octets value);
+	public Octets getData(Transaction txn, Database db, Octets key, LockMode lm) {
+		DatabaseEntry dkey = new DatabaseEntry(key.array());
+		DatabaseEntry dvalue = new DatabaseEntry();
+		OperationStatus status = db.get(txn, dkey, dvalue, lm);
+		if(status == OperationStatus.SUCCESS) {
+			return Octets.wrap(dvalue.getData());
+		} else {
+			return null;
+		}
 	}
 	
-	public void walk(int tableid, Walk w) {
-		walk(tableid, Octets.EMPTY, w);
+	public boolean putData(Transaction txn , Database db, Octets key, Octets value) {
+		DatabaseEntry dkey = new DatabaseEntry(key.array());
+		DatabaseEntry dvalue = new DatabaseEntry(value.array());
+		OperationStatus status = db.put(txn, dkey, dvalue);
+		return (status == OperationStatus.SUCCESS);
 	}
 	
-	public void walk(int tableid, Octets begin, Walk w) {
-		Table table = getTable(tableid);
-		table.wlock.lock();
+	public void walk(int tableid, Octets begin, Walker w) {
+		DTable dTable = getTable(tableid);
+		Lock lock = dTable.wlock;
+		lock.lock();
 		try {
-			Database db = table.getDatabase();
+			Database db = dTable.getDatabase();
 			Cursor cursor = db.openCursor(null, null);
 			DatabaseEntry key = new DatabaseEntry(begin.array());
 			DatabaseEntry value = new DatabaseEntry();
@@ -271,39 +276,55 @@ public class BDBStorage {
 			for( ; status == OperationStatus.SUCCESS ; status = cursor.getNext(key, value, LockMode.READ_UNCOMMITTED)) {
 				Octets okey = Octets.create(key.getData(), key.getSize());
 				Octets ovalue = Octets.create(value.getData(), value.getSize());
-				if(!w.onProcess(db, okey, ovalue)) break;
+				if(!w.onProcess(okey, ovalue)) break;
 			}
 		} finally {
-			table.wlock.lock();
+			lock.unlock();
 		}
 	}
 	
-	private static BDBStorage instance;
-	
-	public static void init(BDBConfig conf) {
-		assert(instance == null);
-		instance = new BDBStorage(conf);
-	}
-	
-	public void shutdown() {
-		Log.notice("BDBStorage.shutdown. begin.");
-		close();
-		Log.notice("BDBStorage.shutdown end.");
-	}
-	
-	synchronized public void close() {
-		if(this.closed) return;
-		this.closed = true;
-		for (Map.Entry<Integer, Table> e : this.databases.entrySet()) {
-			Database db = e.getValue().getDatabase();
-			Lock lock = e.getValue().getWlock();
-			int tableid = e.getKey();
-			lock.lock(); // never unlock this locks to forbid another operations on closed databases.
-			Log.notice("db:%d close begin.", tableid);
+	@Override
+	public boolean truncateTable(int tableid) {
+		DTable dTable = getTable(tableid);
+		Lock lock = dTable.wlock;
+		lock.lock();
+		Transaction txn = this.getTxn();
+		Database db = dTable.getDatabase();
+		String dbName  = db.getDatabaseName();
+		try {
 			db.close();
-			Log.notice("db:%d close finish.", tableid);
+			this.env.truncateDatabase(txn, dbName, false);
+			txn.commit();
+		} catch (DatabaseException e) {
+			Log.err("BDBStorage.clearTable fail. tableid:%d,  expetion:%s", tableid, e);
+			e.printStackTrace();
+			txn.abort();
+			return false;
+		} finally {
+			lock.unlock();
 		}
-		this.env.close();
+		addTable(tableid, dbName);
+		return true;
+	}
+	
+	public void close() {
+		synchronized(this) {
+			Log.notice("BDBStorage.close. begin.");
+			if(this.closed) return;
+			this.closed = true;
+			for (Map.Entry<Integer, DTable> e : this.databases.entrySet()) {
+				Database db = e.getValue().getDatabase();
+				Lock lock = e.getValue().getWlock();
+				int tableid = e.getKey();
+				String name = db.getDatabaseName();
+				lock.lock(); // never unlock this locks to forbid another operations on closed databases.
+				Log.notice("table <%d, %s> close begin.", tableid, name);
+				db.close();
+				Log.notice("table <%d, %s> close end.", tableid, name);
+			}
+			this.env.close();
+			Log.notice("BDBStorage.close end.");
+		}
 	}
 	
 	synchronized public long backup(String backupDir, long lastFileCopiedInPrevBackup) throws IOException {
@@ -333,9 +354,69 @@ public class BDBStorage {
 	   }	
 		
 	}
-	
-	public static BDBStorage getInstance() {
-		return instance;
+
+	@Override
+	public Octets getData(int tableid, Octets key) {
+		DTable dTable = getTable(tableid);
+		Lock lock = dTable.rlock;
+		lock.lock();
+		try {
+			Database db = dTable.getDatabase();
+			return getData(null, db, key, LockMode.READ_UNCOMMITTED);
+		} finally {
+			lock.unlock();
+		}
 	}
+	
+	@Override
+	public boolean putData(int tableid, Octets key, Octets value) {
+		DTable dTable = getTable(tableid);
+		Lock lock = dTable.wlock;
+		lock.lock();
+		try {
+			Database db = dTable.getDatabase();
+			return putData(null, db, key, value);
+		} finally {
+			lock.unlock();
+		}		
+	}
+	
+	@Override
+	public Map<Integer, ArrayList<Octets>> getDatas(
+			Map<Integer, ArrayList<Octets>> tableDatasMap) {
+		return null;
+	}
+	
+	@Override
+	public boolean putDatas(Map<Integer, ArrayList<Pair>> tableDatasMap) {
+		TreeMap<Integer, Boolean> locks = new TreeMap<Integer, Boolean>();
+		for(Integer tableid : tableDatasMap.keySet()) {
+			locks.put(tableid, false); // write lock.
+		}
+		lockDBs(locks);
+		Transaction txn = this.getTxn();
+		try {
+			for(Map.Entry<Integer, ArrayList<Pair>> e : tableDatasMap.entrySet()) {
+				Integer tableid = e.getKey();
+				DTable table = this.getTable(tableid);
+				Database db = table.getDatabase();
+				for(Pair pair : e.getValue()) {
+					this.putData(txn, db, pair.getKey(), pair.getValue());
+				}
+			}
+			txn.commit();
+			return true;
+		} catch (Exception e) {
+			Log.alert(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+			Log.alert("BDBStorage.putDatas fail! exception:%s", e);
+			e.printStackTrace();
+			Log.alert(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+			txn.abort();
+			return false;
+		} finally {
+			unlockDBs(locks);
+		}
+	}
+	
 
 }

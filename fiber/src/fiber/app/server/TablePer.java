@@ -2,11 +2,9 @@ package fiber.app.server;
 
 import java.util.Map;
 
-import com.sleepycat.je.Database;
-
 import fiber.common.LockPool;
 import fiber.common.Marshaller;
-import fiber.db.BDBStorage;
+import fiber.db.Walker;
 import fiber.io.Log;
 import fiber.io.Octets;
 import fiber.io.OctetsStream;
@@ -29,21 +27,33 @@ public class TablePer extends Table {
 	
 	private final static RemoveExpirePolicy DEFAULT_POLICY = new RemoveExpirePolicy(600);
 
-	public TablePer(int id, boolean persist, int maxsize, Marshaller msKey,
+	public TablePer(int id, int maxsize, Marshaller msKey,
 			Marshaller msValue, ShrinkPolicy policy) {
-		super(id, persist, maxsize, msKey, msValue, policy);
+		super(id, true, maxsize, msKey, msValue, policy);
 	}
 	
-	public TablePer(int id, boolean persist, int maxsize, Marshaller msKey,
+	public TablePer(int id, int maxsize, Marshaller msKey,
 			Marshaller msValue) {
-		super(id, persist, maxsize, msKey, msValue, DEFAULT_POLICY);
+		super(id, true, maxsize, msKey, msValue, DEFAULT_POLICY);
 	}
 
 	@Override
+	protected Object loadValue(Object key) throws Exception {
+		OctetsStream os = OctetsStream.create(8);
+		this.marshalKey(os, key);
+		Octets ovalue = G.storage.getData(this.getId(), os.toOctets());
+		if(ovalue == null) return null;
+		OctetsStream vos = OctetsStream.wrap(ovalue);
+		Object value = this.unmarshalValue(vos);
+		return value;
+	}
+	
+	
+	@Override
 	public void walk(final Walk w) {
-		BDBStorage.getInstance().walk(this.getId(), new fiber.db.BDBStorage.Walk() {
+		G.storage.walk(this.getId(), new Walker() {
 			@Override
-			public boolean onProcess(Database table, Octets key, Octets value) {
+			public boolean onProcess(Octets key, Octets value) {
 				try {
 					Object okey = unmarshalKey(OctetsStream.wrap(key));
 					Object ovalue = unmarshalValue(OctetsStream.wrap(value));
@@ -51,8 +61,8 @@ public class TablePer extends Table {
 				} catch(Exception e) {
 					Log.err("TablePer.walk. exception:%s", e);
 					e.printStackTrace();
+					return true;
 				}
-				return false;
 			}
 		});
 		

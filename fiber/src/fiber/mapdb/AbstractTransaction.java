@@ -17,7 +17,7 @@ import fiber.io.RpcBean;
 import fiber.io.RpcHandler;
 import static fiber.io.Log.*;
 
-public class Transaction {
+public class AbstractTransaction {
 	
 	public final static class Logger {
 		private static final class LogInfo {
@@ -176,7 +176,7 @@ public class Transaction {
 	private final Logger logger;	
 	private final Dispatcher dispatcher;
 	private final TreeSet<Integer> lockSet;
-	public Transaction() {
+	public AbstractTransaction() {
 		this.dataMap = new HashMap<WKey, WValue>();
 		this.logger = new Logger();
 		this.lockSet = new TreeSet<Integer>();

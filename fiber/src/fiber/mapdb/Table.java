@@ -35,7 +35,7 @@ public abstract class Table {
 	public final Map<Object, TValue> getDataMap() { return map; }
 	protected final ShrinkPolicy getPolicy() { return policy; }
 	
-	public TValue get(Object key) {
+	public TValue get(Object key) throws Exception {
 		TValue value = map.get(key);
 		if(value == null) {
 			TValue newValue = new TValue(loadValue(key));
@@ -49,7 +49,7 @@ public abstract class Table {
 	public Object putIfAbsent(Object key, TValue value) {	return map.putIfAbsent(key, value);	}
 	
 	public void onUpdate(Object key, TValue value) { }
-	protected Object loadValue(Object key) { return null; }
+	protected Object loadValue(Object key) throws Exception { return null; }
 	
 	public static interface Walk {
 		abstract boolean onProcess(Table table, Object key, TValue value);
@@ -59,8 +59,8 @@ public abstract class Table {
 	abstract public void walkCache(Walk w);
 	
 	/**
-	 * 注意,删除某元素时,必须保证没有线程在操作这个元素.
-	 * 通常做法是加锁.
+	 * make sure no other threads operate on it.
+	 * you can lock it before opertion.
 	 */
 	public void remove(Object key) {
 		TValue value = this.map.remove(key);

@@ -1,28 +1,34 @@
 package fiber.app.server;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeMap;
 
 import fiber.bean.SessionInfo;
+import fiber.bean._.WrapperSessionInfo;
 import fiber.common.Marshaller;
 import fiber.common.Wrapper;
+import fiber.db.BDBConfig;
+import fiber.db.BDBStorage;
+import fiber.db.Storage;
 import fiber.io.Bean;
 import fiber.io.Log;
 import fiber.io.MarshalException;
 import fiber.io.OctetsStream;
+import fiber.mapdb.Pair;
 import fiber.mapdb.TValue;
 import fiber.mapdb.Table;
 import fiber.mapdb.WKey;
 import fiber.mapdb.WValue;
-
 import fiber.bean.*;
-import static fiber.bean._.*;
 
 public class AllTable {
+	
 	private final static Map<Integer, Table> tables = new HashMap<Integer, Table>();
 	public static Map<Integer, Table> getTables() { return tables; }
 	public static Table getTable(int tableid) { return tables.get(tableid); }
 	
-	public static TValue getData(int tableid, WKey key) {
+	public static TValue getData(int tableid, WKey key) throws Exception {
 		return getTable(tableid).get(key);
 	}
 	
@@ -34,6 +40,37 @@ public class AllTable {
 	
 	public static void unregister(int tableid) {
 		tables.remove(tableid);
+	}
+	private final static Object flushLock = new Object();
+	private final static OctetsStream kos = OctetsStream.create(64);
+	private final static OctetsStream vos = OctetsStream.create(1024 * 1024);
+	
+	public static void flush() {
+		synchronized(flushLock) {
+			Log.trace("======> Transaction. flush begin");
+			Map<WKey, Object> data = Transaction.getWaitCommitDataMap();
+			TreeMap<Integer, ArrayList<Pair>> tableDatasMap = new TreeMap<Integer, ArrayList<Pair>>();
+			for(Map.Entry<WKey, Object> e : data.entrySet()) {
+				WKey wkey = e.getKey();
+				Object key = wkey.getKey();
+				Object value = e.getValue();
+				Table table = wkey.getTable();
+				kos.clear();
+				table.marshalKey(kos, key);
+				vos.clear();
+				table.marshalValue(vos, value);
+				ArrayList<Pair> tableDatas = tableDatasMap.get(table.getId());
+				if(tableDatas == null) {
+					tableDatas = new ArrayList<Pair>();
+					tableDatasMap.put(table.getId(), tableDatas);
+				}
+				tableDatas.add(new Pair(kos.toOctets(), vos.toOctets()));
+			}
+			if(G.storage.putDatas(tableDatasMap)) {		
+				Transaction.doneCommit();
+			}
+			Log.trace("======> Transaction.flush end");
+		}
 	}
 	
 	
@@ -127,11 +164,11 @@ public class AllTable {
 	}
 	
 	/////////////////////////////////////////////////////////
-	//  Table Class defines 
+	//  DTable Class defines 
 	/////////////////////////////////////////////////////////
 	public static class IntIntTable extends TableMem {
-		public IntIntTable(int id, boolean persist, int maxsize) {
-			super(id, persist, maxsize, IntMarshaller, IntMarshaller);
+		public IntIntTable(int id, int maxsize) {
+			super(id, maxsize, IntMarshaller, IntMarshaller);
 		}
 	}
 	
@@ -144,15 +181,15 @@ public class AllTable {
 	public final static Table tSession;
 
 	static {
-		register(tUser = new IntIntTable(1, false, 1000 * 1000));
-		register(tSession = new TableMem(2, false, 1000 * 1000, IntMarshaller, new BeanMarshaller(SessionInfo.STUB)));
+		register(tUser = new TablePer(1, 1000 * 1000, IntMarshaller, IntMarshaller));
+		register(tSession = new TablePer(2, 1000 * 1000, IntMarshaller, new BeanMarshaller(SessionInfo.STUB)));
 	}
 	
 	/////////////////////////////////////////////////////////
 	//  table wrapper getter methods defines 
 	/////////////////////////////////////////////////////////
 
-	public static WrapperInt getUser(int uid) {
+	public static WrapperInt getUser(int uid) throws Exception {
 		Transaction txn = Transaction.get();
 		WKey key = new WKey(tUser, uid);
 		WValue value = txn.getData(key);
@@ -170,7 +207,7 @@ public class AllTable {
 		}
 	}
 	
-	public static WrapperSessionInfo getSession(int sid) {
+	public static WrapperSessionInfo getSession(int sid) throws Exception {
 		Transaction txn = Transaction.get();
 		WKey key = new WKey(tSession, sid);
 		WValue value = txn.getData(key);
@@ -186,7 +223,7 @@ public class AllTable {
 		}
 	}
 	
-	public static void test1() {
+	public static void test1() throws Exception {
 		int N = 5;
 		for(int i = 1 ; i < N ; i++) {
 			WrapperInt wrap = getUser(i);
@@ -215,7 +252,7 @@ public class AllTable {
 		}
 	}
 	
-	public static void test2() {
+	public static void test2() throws Exception {
 		int N = 5;
 		for(int i = 1 ; i < N ; i++) {
 			WrapperSessionInfo wrap = getSession(i);
@@ -264,9 +301,53 @@ public class AllTable {
 		}
 	}
 	
-	public static void main(String[] args) {
+	public static void testtable() throws Exception {
+		BDBConfig conf = new BDBConfig();
+		conf.setEnvRoot("e:/bdb_root");
+		conf.setBackupRoot("e:/bdb_backup_root");
+		conf.setIncrementalBackupInterval(0);
+		conf.setFullBackupInterval(0);
+		conf.setCacheSize(10 * 1024 * 1024);
+		
+		conf.AddDatabse(1, "user");
+		conf.AddDatabse(2, "role");
+		
+		G.storage = BDBStorage.create(conf);
+		
+		
+		Storage storage = G.storage;
+		storage.truncateTable(1);
+		storage.truncateTable(2);
+		
+		Transaction txn = Transaction.get();
+		for(int i = 0 ; i < 20 ; i++) {
+			 WrapperInt wi = getUser(i);
+			 Log.trace("User[%d] = %s", i, wi);
+			 if(wi.isNULL()) wi.set(i * 1000);
+			 WrapperSessionInfo ws = getSession(i);
+			 Log.trace("SessionInfo[%d] = %s", i, ws);
+			 if(ws.isNULL()) ws.assign(new SessionInfo());
+		}
+		txn.commit();
+		txn.end();
+		
+		Log.trace("===============>");
+		for(int i = 0 ; i < 20 ; i++) {
+			 WrapperInt wi = getUser(i);
+			 Log.trace("User[%d] = %s", i, wi);
+			 WrapperSessionInfo ws = getSession(i);
+			 Log.trace("SessionInfo[%d] = %s", i, ws);
+		}
+		txn.commit();
+		txn.end();
+		
+		flush();
+	}
+	
+	
+	public static void main(String[] args) throws Exception {
 		System.setProperty("log_level", Integer.valueOf(Log.LOG_ALL).toString());
-		test2();
+		testtable();
 		
 	}
 }

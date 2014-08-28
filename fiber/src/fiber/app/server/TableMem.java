@@ -19,14 +19,14 @@ public class TableMem extends Table {
 	
 	private final static RemoveNullPolicy DEFAULT_POLICY = new RemoveNullPolicy();
 
-	public TableMem(int id, boolean persist, int maxsize, Marshaller msKey,
+	public TableMem(int id, int maxsize, Marshaller msKey,
 			Marshaller msValue, ShrinkPolicy policy) {
-		super(id, persist, maxsize, msKey, msValue, policy);
+		super(id, false, maxsize, msKey, msValue, policy);
 	}
 	
-	public TableMem(int id, boolean persist, int maxsize, Marshaller msKey,
+	public TableMem(int id, int maxsize, Marshaller msKey,
 			Marshaller msValue) {
-		super(id, persist, maxsize, msKey, msValue, DEFAULT_POLICY);
+		super(id, false, maxsize, msKey, msValue, DEFAULT_POLICY);
 	}
 
 	@Override

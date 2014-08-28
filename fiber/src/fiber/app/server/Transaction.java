@@ -10,7 +10,7 @@ import fiber.io.Log;
 import fiber.mapdb.WKey;
 import fiber.mapdb.WValue;
 
-public class Transaction extends fiber.mapdb.Transaction {
+public class Transaction extends fiber.mapdb.AbstractTransaction {
 	private final static ThreadLocal<Transaction> contexts = new ThreadLocal<Transaction>() {
 		@Override
 		public Transaction initialValue() {
@@ -32,22 +32,26 @@ public class Transaction extends fiber.mapdb.Transaction {
 		Lock lock = waitCommitWriteLock;
 		lock.lock();
 		try{
-			assert(inCommitDataMap == null);
-			if(inCommitDataMap != null) return inCommitDataMap;
+			if(inCommitDataMap != null) {
+				Log.alert("Transation.getWaitCommitDataMap. inCommitDataMap not commit succ? retry.");
+				return inCommitDataMap;
+			}
 			inCommitDataMap = waitCommitDataMap;
 			waitCommitDataMap = new ConcurrentHashMap<WKey, Object>();
+			Log.notice("=====> new inCommitDataMap. size:%d", inCommitDataMap.size());
 			return inCommitDataMap;
 		} finally {
 			lock.unlock();
 		}
 	}
 	
-	public static void doneCommit() {
+	static void doneCommit() {
 		assert(inCommitDataMap != null);
 		Lock lock = waitCommitReadLock;
 		lock.lock();
 		try {
 			inCommitDataMap = null;
+			Log.notice("=====> commit finish.");
 		} finally {
 			lock.unlock();
 		}
@@ -79,4 +83,5 @@ public class Transaction extends fiber.mapdb.Transaction {
 			lock.unlock();
 		}
 	}
+	
 }
