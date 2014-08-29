@@ -5,6 +5,7 @@ import java.util.Map;
 import fiber.common.LockPool;
 import fiber.common.Marshaller;
 import fiber.db.Walker;
+import fiber.io.Const;
 import fiber.io.Log;
 import fiber.io.Octets;
 import fiber.io.OctetsStream;
@@ -25,7 +26,8 @@ public class TablePer extends Table {
 		}		
 	}
 	
-	private final static RemoveExpirePolicy DEFAULT_POLICY = new RemoveExpirePolicy(600);
+	private final static int DEFAULT_SHRINK_EXPIRE_TIME = Const.getProperty("table_persist_shrink_expire_time", 600, 1, Integer.MAX_VALUE);
+	private final static RemoveExpirePolicy DEFAULT_POLICY = new RemoveExpirePolicy(DEFAULT_SHRINK_EXPIRE_TIME);
 
 	public TablePer(int id, int maxsize, Marshaller msKey,
 			Marshaller msValue, ShrinkPolicy policy) {
@@ -72,6 +74,7 @@ public class TablePer extends Table {
 	public void shrink() {
 		LockPool pool = LockPool.getInstance();
 		ShrinkPolicy policy = this.getPolicy();
+		int toRemoveNum = this.size() - this.remainSizeAfterShrink();
 		for(Map.Entry<Object, TValue> e : this.getDataMap().entrySet()) {
 			Object key = e.getKey();
 			TValue value = e.getValue();
@@ -82,6 +85,7 @@ public class TablePer extends Table {
 				try {
 					if(policy.check(key, value) && !Transaction.isDirty(new WKey(this, key))) {
 						remove(key);
+						if(--toRemoveNum <= 0) break;
 					}	
 				} finally {
 					pool.unlock(lockid);

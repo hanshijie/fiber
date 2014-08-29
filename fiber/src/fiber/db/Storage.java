@@ -20,5 +20,7 @@ public abstract class Storage {
 	
 	public abstract boolean truncateTable(int tableid);
 	
+	public abstract void checkpoint() throws Exception;
+	
 	public abstract void close();
 }

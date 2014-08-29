@@ -41,6 +41,6 @@ public final class TValue {
 
 	@Override
 	public String toString() {
-		return String.format("TValue{shrink=%s, value=%s}", shrink, value);
+		return String.format("TValue{shrink=%s, lastAccessTime:%s, value=%s}", shrink, lastAccessTime, value);
 	}
 }

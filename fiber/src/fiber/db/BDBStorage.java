@@ -444,6 +444,13 @@ public final class BDBStorage extends Storage {
 			lock.unlock();
 		}
 	}
+
+	@Override
+	public void checkpoint() throws Exception {
+		// unnecessary to invoke environment.checkpoint();
+		this.env.flushLog(true);
+		
+	}
 	
 
 }

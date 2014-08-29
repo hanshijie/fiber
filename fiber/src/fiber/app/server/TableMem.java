@@ -33,6 +33,7 @@ public class TableMem extends Table {
 	public void shrink() {
 		LockPool pool = LockPool.getInstance();
 		ShrinkPolicy policy = this.getPolicy();
+		int toRemoveNum = this.size() - this.remainSizeAfterShrink();
 		for(Map.Entry<Object, TValue> e : this.getDataMap().entrySet()) {
 			Object key = e.getKey();
 			TValue value = e.getValue();
@@ -43,6 +44,7 @@ public class TableMem extends Table {
 					// double check.
 					if(policy.check(key, value)) {
 						remove(key);
+						if(--toRemoveNum <= 0) break;
 					}	
 				} finally {
 					pool.unlock(lockid);

@@ -3,6 +3,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import fiber.bean.SessionInfo;
 import fiber.bean._.WrapperSessionInfo;
@@ -12,6 +15,7 @@ import fiber.db.BDBConfig;
 import fiber.db.BDBStorage;
 import fiber.db.Storage;
 import fiber.io.Bean;
+import fiber.io.Const;
 import fiber.io.Log;
 import fiber.io.MarshalException;
 import fiber.io.OctetsStream;
@@ -23,7 +27,6 @@ import fiber.mapdb.WValue;
 import fiber.bean.*;
 
 public class AllTable {
-	
 	private final static Map<Integer, Table> tables = new HashMap<Integer, Table>();
 	public static Map<Integer, Table> getTables() { return tables; }
 	public static Table getTable(int tableid) { return tables.get(tableid); }
@@ -41,13 +44,18 @@ public class AllTable {
 	public static void unregister(int tableid) {
 		tables.remove(tableid);
 	}
+	
 	private final static Object flushLock = new Object();
 	private final static OctetsStream kos = OctetsStream.create(64);
 	private final static OctetsStream vos = OctetsStream.create(1024 * 1024);
 	
 	public static void flush() {
 		synchronized(flushLock) {
-			Log.trace("======> Transaction. flush begin");
+			if(G.storage == null) {
+				Log.notice("AllTable.flush  storage hasn't been initiated. omit");
+				return;
+			}
+			Log.notice("======> AllTable. flush begin");
 			Map<WKey, WValue> data = Transaction.getWaitCommitDataMap();
 			TreeMap<Integer, ArrayList<Pair>> tableDatasMap = new TreeMap<Integer, ArrayList<Pair>>();
 			for(Map.Entry<WKey, WValue> e : data.entrySet()) {
@@ -70,9 +78,42 @@ public class AllTable {
 			}
 			if(G.storage.put(tableDatasMap)) {		
 				Transaction.doneCommit();
+			} else {
+				Log.alert("AllTable.flush  storage.put fail. data num:%d", data.size());
 			}
-			Log.trace("======> Transaction.flush end");
+			Log.notice("======> AllTable.flush end");
 		}
+	}
+	
+	private static final ScheduledExecutorService scheduleExecutor = Executors.newSingleThreadScheduledExecutor();
+	public static void shrink() {
+		for(Table table : tables.values()) {
+			if(table.overmaxsize()) {
+				Log.notice("AllTable.shrink. table:<%d> size:%s maxsize:%s. shrink begin.", table.getId(), table.size(), table.maxsize());
+				table.shrink();
+				Log.notice("AllTable.shrink. table:<%d> size:%s maxsize:%s. shrink end  .", table.getId(), table.size(), table.maxsize());
+			}
+		}
+	}
+	
+	static {
+		final int shrink_check_interval = Const.getProperty("shrink_check_interval", 6, 1, Integer.MAX_VALUE);
+		scheduleExecutor.scheduleWithFixedDelay(new Runnable() {
+			@Override
+			public void run() {
+				shrink();
+			}
+			
+		}, shrink_check_interval, shrink_check_interval, TimeUnit.SECONDS);
+		
+		final int storage_flush_interval = Const.getProperty("storage_flush_interval", 30, 1, 1800);
+		scheduleExecutor.scheduleWithFixedDelay(new Runnable() {
+			@Override
+			public void run() {
+				flush();
+			}
+			
+		}, storage_flush_interval, storage_flush_interval, TimeUnit.SECONDS);
 	}
 	
 	
@@ -183,8 +224,8 @@ public class AllTable {
 	public final static Table tSession;
 
 	static {
-		register(tUser = new TablePer(1, 1000 * 1000, IntMarshaller, IntMarshaller));
-		register(tSession = new TablePer(2, 1000 * 1000, IntMarshaller, new BeanMarshaller(SessionInfo.STUB)));
+		register(tUser = new TableMem(1, 10, IntMarshaller, IntMarshaller));
+		register(tSession = new TablePer(2, 10, IntMarshaller, new BeanMarshaller(SessionInfo.STUB)));
 	}
 	
 	/////////////////////////////////////////////////////////
@@ -225,84 +266,6 @@ public class AllTable {
 		}
 	}
 	
-	public static void test1() throws Exception {
-		int N = 5;
-		for(int i = 1 ; i < N ; i++) {
-			WrapperInt wrap = getUser(i);
-			wrap.set(i * i);
-		}
-		
-		Transaction txn = Transaction.get();
-		txn.dump();
-		
-		for(int i = 0 ; i < N * 2 ; i++) {
-			TValue value = tUser.get(i);
-			Log.trace("%s => %s", i, value);
-		}
-		
-		try {
-			//tUser.get(1).setShrink(true);
-			//tUser.get(1).setValue(1218);
-			txn.commit();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		
-		for(int i = 0 ; i < N * 2 ; i++) {
-			TValue value = tUser.get(i);
-			Log.trace("%s => %s", i, value);
-		}
-	}
-	
-	public static void test2() throws Exception {
-		int N = 5;
-		for(int i = 1 ; i < N ; i++) {
-			WrapperSessionInfo wrap = getSession(i);
-			if(wrap.isNULL()) wrap.assign(new SessionInfo());
-		}
-		
-		Transaction txn = Transaction.get();
-		txn.dump();
-		
-		for(int i = 0 ; i < N * 2 ; i++) {
-			TValue value = tSession.get(i);
-			Log.trace("%s => %s", i, value);
-		}
-		
-		try {
-			txn.commit();
-			txn.end();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		
-		{
-			WrapperSessionInfo w = getSession(1);
-			w.setuid(1218);
-			try {
-				txn.commit();
-				txn.end();
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-			Log.trace("%s", getSession(1));
-		}
-		{
-			WrapperSessionInfo w = getSession(1);
-
-			w.assign(new SessionInfo());
-
-			
-			try {
-				txn.commit();
-				txn.end();
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-			Log.trace("%s", getSession(1));
-		}
-	}
-	
 	public static void testtable() throws Exception {
 		BDBConfig conf = new BDBConfig();
 		conf.setEnvRoot("e:/bdb_root");
@@ -322,16 +285,21 @@ public class AllTable {
 		storage.truncateTable(2);
 		
 		Transaction txn = Transaction.get();
-		for(int i = 0 ; i < 20 ; i++) {
-			 WrapperInt wi = getUser(i);
-			 Log.trace("User[%d] = %s", i, wi);
-			 if(wi.isNULL()) wi.set(i * 1000);
-			 WrapperSessionInfo ws = getSession(i);
-			 Log.trace("SessionInfo[%d] = %s", i, ws);
-			 if(ws.isNULL()) ws.assign(new SessionInfo());
+		try {
+			for(int i = 0 ; i < 20 ; i++) {
+				 WrapperInt wi = getUser(i);
+				 Log.trace("User[%d] = %s", i, wi);
+				 if(wi.isNULL()) wi.set(i * 1000);
+				 WrapperSessionInfo ws = getSession(i);
+				 Log.trace("SessionInfo[%d] = %s", i, ws);
+				 if(ws.isNULL()) ws.assign(new SessionInfo());
+			}
+			txn.commit();
+		} catch(Exception e) {
+			txn.rollback();
+		} finally {
+			txn.end();
 		}
-		txn.commit();
-		txn.end();
 		flush();
 		
 		Log.trace("===============>");
@@ -367,7 +335,6 @@ public class AllTable {
 	
 	public static void main(String[] args) throws Exception {
 		System.setProperty("log_level", Integer.valueOf(Log.LOG_ALL).toString());
-		testtable();
-		
+		testtable();	
 	}
 }

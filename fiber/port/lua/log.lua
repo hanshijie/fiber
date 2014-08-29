@@ -1,10 +1,13 @@
+local print = print
+local format = string.format
+
 local log = {}
 function log.log(...)
-	print(string.format(...))
+	print(format(...))
 end
 
 function log.err(...)
-	print("[err]", string.format(...))
+	print("[err]", format(...))
 end
 
 function log.print(...) 

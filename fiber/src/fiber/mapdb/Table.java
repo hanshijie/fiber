@@ -4,6 +4,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import fiber.common.Marshaller;
+import fiber.io.Log;
 import fiber.io.MarshalException;
 import fiber.io.OctetsStream;
 
@@ -31,6 +32,7 @@ public abstract class Table {
 	public final int size() { return map.size(); }
 	public final int maxsize() { return this.maxsize; }
 	public final boolean overmaxsize() { return size() > maxsize(); }
+	protected int remainSizeAfterShrink() { return maxsize() * 4 / 5; }
 	
 	public final Map<Object, TValue> getDataMap() { return map; }
 	protected final ShrinkPolicy getPolicy() { return policy; }
@@ -65,6 +67,7 @@ public abstract class Table {
 	public void remove(Object key) {
 		TValue value = this.map.remove(key);
 		if(value != null) {
+			Log.debug("Table:%d remove key:%s value:%s", this.getId(), key, value);
 			value.setShrink(true);
 		}
 	}
