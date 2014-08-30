@@ -2,7 +2,7 @@ package fiber.mapdb.collectionwrapper;
 
 import java.util.List;
 
-import fiber.common.Wrapper;
+import fiber.db.Wrapper;
 import fiber.pcollections.ArrayList;
 
 

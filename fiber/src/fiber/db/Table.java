@@ -1,4 +1,4 @@
-package fiber.mapdb;
+package fiber.db;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;

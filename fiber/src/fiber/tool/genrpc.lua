@@ -685,7 +685,7 @@ context.helper_imports = function(ctx)
 	local imports = {
 		"fiber.io.*",
 		"java.util.*",
-		"fiber.common.Wrapper",
+		"fiber.db.Wrapper",
 	}
 	return "import " .. table.concat(imports, ";\nimport ") .. ";\n"
 end

@@ -1,4 +1,4 @@
-package fiber.common;
+package fiber.db;
 
 public class RetException extends Exception {
 	private static final long serialVersionUID = 5479983805739536726L;

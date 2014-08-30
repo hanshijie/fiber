@@ -1,11 +1,16 @@
-package fiber.mapdb;
+package fiber.db;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import fiber.common.LockPool;
+import fiber.common.TaskPool;
 import fiber.io.Bean;
 import fiber.io.BeanCodec;
 import fiber.io.ClientManager;
@@ -17,7 +22,7 @@ import fiber.io.RpcBean;
 import fiber.io.RpcHandler;
 import static fiber.io.Log.*;
 
-public class AbstractTransaction {
+public class Transaction {
 	
 	public final static class Logger {
 		private static final class LogInfo {
@@ -141,6 +146,19 @@ public class AbstractTransaction {
 			}
 		}
 		
+		static final class Job4 implements Runnable {
+			private final long delay;
+			private final Runnable task;
+			public Job4(Runnable task, long delay) {
+				this.delay = delay;
+				this.task = task;
+			}
+			@Override
+			public void run() {
+				TaskPool.schedule(task, delay, TimeUnit.MILLISECONDS);
+			}
+		}
+		
 		private final ArrayList<Runnable> jobs = new ArrayList<Runnable>();
 		
 		public void send(IOSession session, Bean<?> bean) {
@@ -157,6 +175,14 @@ public class AbstractTransaction {
 		
 		public <A extends Bean<A>, R extends Bean<R>> void sendRpc(ClientManager manager, RpcBean<A, R> rpcbean, RpcHandler<A, R> handler) {
 			this.jobs.add(new Job3<A, R>(manager, rpcbean, handler));
+		}
+		
+		public void schedule(Runnable task, long milliseconddelay) {
+			this.jobs.add(new Job4(task, milliseconddelay));
+		}
+		
+		public void scheduleSecond(Runnable task, long secondDelay) {
+			this.jobs.add(new Job4(task, secondDelay * 1000));
 		}
 		
 		public void clear() {
@@ -176,7 +202,7 @@ public class AbstractTransaction {
 	private final Logger logger;	
 	private final Dispatcher dispatcher;
 	private final TreeSet<Integer> lockSet;
-	public AbstractTransaction() {
+	public Transaction() {
 		this.dataMap = new HashMap<WKey, WValue>();
 		this.logger = new Logger();
 		this.lockSet = new TreeSet<Integer>();
@@ -223,10 +249,6 @@ public class AbstractTransaction {
 		this.dispatcher.commit();
 		this.unlock();
 		Log.info("%s commit. end.", this);
-	}
-	
-	protected void commitModifyData() {
-		// TODO 作为一个完整事务将修改的数据加入到变化表中.
 	}
 	
 	public void rollback() {
@@ -295,6 +317,79 @@ public class AbstractTransaction {
 		for(Map.Entry<WKey, WValue> e : this.dataMap.entrySet()) {
 			Log.trace("{key=%s, value=%s}", e.getKey(), e.getValue());
 		}
+	}
+	
+	private final static ReadWriteLock waitCommitRWLock = new ReentrantReadWriteLock();
+	private final static Lock waitCommitReadLock = waitCommitRWLock.readLock();
+	private final static Lock waitCommitWriteLock = waitCommitRWLock.writeLock();
+	private static ConcurrentHashMap<WKey, WValue> waitCommitDataMap = new ConcurrentHashMap<WKey, WValue>();
+	private static ConcurrentHashMap<WKey, WValue> inCommitDataMap = null;
+
+	public static Map<WKey, WValue> getWaitCommitDataMap() {
+		Lock lock = waitCommitWriteLock;
+		lock.lock();
+		try{
+			if(inCommitDataMap != null) {
+				Log.alert("Transation.getWaitCommitDataMap. inCommitDataMap not commit succ? retry.");
+				return inCommitDataMap;
+			}
+			inCommitDataMap = waitCommitDataMap;
+			waitCommitDataMap = new ConcurrentHashMap<WKey, WValue>();
+			Log.notice("=====> new inCommitDataMap. size:%d", inCommitDataMap.size());
+			return inCommitDataMap;
+		} finally {
+			lock.unlock();
+		}
+	}
+	
+	public static void doneCommit() {
+		assert(inCommitDataMap != null);
+		Lock lock = waitCommitReadLock;
+		lock.lock();
+		try {
+			inCommitDataMap = null;
+			Log.notice("=====> commit finish.");
+		} finally {
+			lock.unlock();
+		}
+	}
+	
+	public static boolean isDirty(WKey key) {
+		Lock lock = waitCommitReadLock;
+		lock.lock();
+		try {
+			return waitCommitDataMap.contains(key) || (inCommitDataMap != null && inCommitDataMap.contains(key));
+		} finally {
+			lock.unlock();
+		}
+	}
+
+	protected void commitModifyData() {
+		Lock lock = waitCommitReadLock;
+		lock.lock();
+		try{
+			for(Map.Entry<WKey, WValue> e : this.getDataMap().entrySet()) {
+				WKey key = e.getKey();
+				WValue value = e.getValue();
+				if(value.isModify() && key.getTable().isPersist()) {
+					waitCommitDataMap.put(key, value);
+					Log.info("waitCommitMap.put [%s]=>{origin:%s, cur:%s}", key, value.getOriginValue(), value.getCurValue());
+				}
+			}
+		} finally {
+			lock.unlock();
+		}
+	}
+	
+	private final static ThreadLocal<Transaction> contexts = new ThreadLocal<Transaction>() {
+		@Override
+		public Transaction initialValue() {
+			return new Transaction();
+		}
+	};
+	
+	public static Transaction get() {
+		return contexts.get();
 	}
 
 }

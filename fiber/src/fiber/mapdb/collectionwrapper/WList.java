@@ -7,7 +7,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 
-import fiber.common.Wrapper;
+import fiber.db.Wrapper;
 import fiber.io.Log;
 
 public class WList<W> extends Wrapper<List<W>> implements List<W> {
@@ -25,7 +25,7 @@ public class WList<W> extends Wrapper<List<W>> implements List<W> {
 	
 	private final Class<? extends List<W>> clazz;
 	@SuppressWarnings("unchecked")
-	public WList(Class<?> c, List<W> w, fiber.common.Wrapper.Notifier n) {
+	public WList(Class<?> c, List<W> w, fiber.db.Wrapper.Notifier n) {
 		super(w, n);
 		this.clazz = (Class<? extends List<W>>) c;
 	}

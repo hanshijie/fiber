@@ -2,7 +2,7 @@
 db = luajava.bindClass("fiber.app.server.AllTables"):get()
 txn = db:getTxn()
 
-retexception = luajava.bindClass("fiber.common.RetException")
+retexception = luajava.bindClass("fiber.db.RetException")
 
 function error(retcode)
 	retexception:trigger(retcode)

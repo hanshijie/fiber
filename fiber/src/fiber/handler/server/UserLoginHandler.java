@@ -1,10 +1,11 @@
 package fiber.handler.server;
 
-import fiber.app.server.Procedure;
+
 import fiber.bean.UserLogin;
 import fiber.common.TaskPool;
+import fiber.db.Procedure;
 import fiber.io.*;
-import static fiber.app.server.Modules.*;
+import static fiber.app.server.G.*;
 public class UserLoginHandler extends BeanHandler<UserLogin> {
 	@Override
 	public void onProcess(final IOSession session, final UserLogin arg) {
@@ -12,6 +13,11 @@ public class UserLoginHandler extends BeanHandler<UserLogin> {
 			@Override
 			protected void execute() throws Exception {
 				login.UserLogin(session, arg);
+			}
+
+			@Override
+			protected void onRetError(int retcode, Object content) {
+				
 			}
 
 		});

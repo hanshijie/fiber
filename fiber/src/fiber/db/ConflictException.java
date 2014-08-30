@@ -1,4 +1,4 @@
-package fiber.mapdb;
+package fiber.db;
 
 public class ConflictException extends Exception {
 	private static final long serialVersionUID = -2035543463458170933L;

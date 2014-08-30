@@ -12,7 +12,7 @@ public class TestTypeHandler extends BeanHandler<TestType> {
 	public void onProcess(final IOSession session, final TestType arg) {
 		Log.trace("TestTypeHandler.onProcess. sessionid:%d, arg:%s", session.getId(), arg);
 		/*
-		TaskPool.execute(new AbstractProcedure() {
+		TaskPool.execute(new Procedure() {
 			@Override
 			protected void execute() throws Exception {
 				log.trace("%s.execute. sessionid:%d, arg:%s", this, session.getId(), arg);

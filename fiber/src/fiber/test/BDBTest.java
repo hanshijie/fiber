@@ -1,14 +1,14 @@
 package fiber.test;
 
-import fiber.app.server.AllTable;
-import fiber.app.server.G;
-import fiber.app.server.TablePer;
+import fiber.app.server.DB;
 import fiber.db.BDBConfig;
 import fiber.db.BDBStorage;
+import fiber.db.Storage;
+import fiber.db.TValue;
+import fiber.db.Table;
+import fiber.db.TablePer;
+import fiber.db.Table.Walk;
 import fiber.io.Log;
-import fiber.mapdb.TValue;
-import fiber.mapdb.Table;
-import fiber.mapdb.Table.Walk;
 
 public class BDBTest {
 
@@ -23,10 +23,10 @@ public class BDBTest {
 		conf.AddDatabse(1, "user");
 		conf.AddDatabse(2, "role");
 		
-		G.storage = BDBStorage.create(conf);
+		Storage.setInstance(BDBStorage.create(conf));
 
 		
-		Table tUser = new TablePer(1, 1000, AllTable.IntMarshaller, AllTable.IntMarshaller);
+		Table tUser = new TablePer(1, 1000, DB.IntMarshaller, DB.IntMarshaller);
 	
 		tUser.walk(new Walk() {
 			int i = 0;

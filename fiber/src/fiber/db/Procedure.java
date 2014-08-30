@@ -1,24 +1,22 @@
-package fiber.mapdb;
+package fiber.db;
 
-import fiber.common.RetException;
+import fiber.db.Transaction.Dispatcher;
+import fiber.db.Transaction.Logger;
 import fiber.io.Log;
-import fiber.mapdb.AbstractTransaction.Dispatcher;
-import fiber.mapdb.AbstractTransaction.Logger;
 
-public abstract class AbstractProcedure implements Runnable {
+public abstract class Procedure implements Runnable {
 	private final int maxRedoCount;
-	public AbstractProcedure(int maxRedoCount) {
+	public Procedure(int maxRedoCount) {
 		this.maxRedoCount = maxRedoCount;
 	}
 	
-	public AbstractProcedure() {
+	public Procedure() {
 		this(10);
 	}
 	
-	/**
-	 * 设置好正确的txn上下文.
-	 */
-	protected abstract void prepare();
+	protected void prepare() {
+		this.txn = Transaction.get();
+	}
 	
 	protected final void rollback() {
 		this.txn.rollback();
@@ -33,7 +31,7 @@ public abstract class AbstractProcedure implements Runnable {
 		Log.info("%s. procedure:%s end.", Thread.currentThread(), this);
 	}
 	
-	protected AbstractTransaction txn;
+	protected Transaction txn;
 	protected Logger log;
 	protected Dispatcher net;
 	public final void run() {
@@ -70,10 +68,8 @@ public abstract class AbstractProcedure implements Runnable {
 	}
 	
 	abstract protected void execute() throws Exception;
+	abstract protected void onRetError(int retcode, Object content);
 	
-	protected void onRetError(int retcode, Object content) {
-		Log.err("%s.onRetError. retcode:%d content:%s", this, retcode, content);
-	}
 	protected void onException(Exception e) {
 		Log.err("%s.onException. exception:%s", this, e);
 		e.printStackTrace();

@@ -2,7 +2,7 @@ package fiber.mapdb.collectionwrapper;
 
 import java.util.Set;
 
-import fiber.common.Wrapper;
+import fiber.db.Wrapper;
 import fiber.pcollections.HashSet;
 
 public class WPSet<E> extends WSet<E> {

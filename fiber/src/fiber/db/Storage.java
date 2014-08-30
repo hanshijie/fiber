@@ -4,9 +4,12 @@ import java.util.ArrayList;
 import java.util.Map;
 
 import fiber.io.Octets;
-import fiber.mapdb.Pair;
 
 public abstract class Storage {
+	private static Storage instance;
+	public static void setInstance(Storage ins) { instance = ins; }
+	public static Storage getInstance() { return instance; }
+	
 	public abstract Octets get(int tableid, Octets key);
 	public abstract boolean put(int tableid, Octets key, Octets value);
 	

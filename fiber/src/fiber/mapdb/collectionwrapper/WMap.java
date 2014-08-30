@@ -7,7 +7,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 
-import fiber.common.Wrapper;
+import fiber.db.Wrapper;
 import fiber.io.Log;
 
 public class WMap<K, V> extends Wrapper<Map<K, V>> implements Map<K, V> {

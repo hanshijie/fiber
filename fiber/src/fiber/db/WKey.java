@@ -1,4 +1,4 @@
-package fiber.mapdb;
+package fiber.db;
 
 
 public final class WKey {

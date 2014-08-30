@@ -1,12 +1,8 @@
-package fiber.app.server;
+package fiber.db;
 
 import java.util.Map;
 
-import fiber.common.LockPool;
 import fiber.common.Marshaller;
-import fiber.mapdb.TValue;
-import fiber.mapdb.Table;
-import fiber.mapdb.WKey;
 
 public class TableMem extends Table {
 	

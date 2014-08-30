@@ -34,7 +34,6 @@ import com.sleepycat.je.util.DbBackup;
 import fiber.io.Log;
 import fiber.io.Octets;
 import fiber.io.Timer;
-import fiber.mapdb.Pair;
 
 public final class BDBStorage extends Storage {
 	public static BDBStorage create(BDBConfig conf) {

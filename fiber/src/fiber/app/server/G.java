@@ -4,6 +4,16 @@ import fiber.db.Storage;
 import fiber.io.Log;
 
 public final class G {
+	
+	/***********************************************
+	 *  		modules define
+	 ***********************************************/
+	public static Login login = new Login();
+	
+	
+	
+	
+	
 	static {
 		Runtime.getRuntime().addShutdownHook(
 			new Thread("JVMShutDown") {
@@ -18,12 +28,11 @@ public final class G {
 			});
 	}
 	
-	public static Storage storage = null;
-	
 	private static void shutdown() {
 		Log.notice("========  JVM shutdown begin =======");
+		Storage storage = Storage.getInstance();
 		if(storage != null) {
-			AllTable.flush();
+			DB.flush();
 			try {
 				storage.checkpoint();
 			} catch (Exception e) {
@@ -33,6 +42,5 @@ public final class G {
 		}
 		Log.notice("========  JVM shutdown end   =======");
 	}
-	
-	
+
 }

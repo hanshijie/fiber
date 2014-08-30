@@ -1,18 +1,13 @@
-package fiber.app.server;
+package fiber.db;
 
 import java.util.Map;
 
-import fiber.common.LockPool;
 import fiber.common.Marshaller;
-import fiber.db.Walker;
 import fiber.io.Const;
 import fiber.io.Log;
 import fiber.io.Octets;
 import fiber.io.OctetsStream;
 import fiber.io.Timer;
-import fiber.mapdb.TValue;
-import fiber.mapdb.Table;
-import fiber.mapdb.WKey;
 
 public class TablePer extends Table {
 	public final static class RemoveExpirePolicy implements ShrinkPolicy {
@@ -43,7 +38,7 @@ public class TablePer extends Table {
 	protected Object loadValue(Object key) throws Exception {
 		OctetsStream os = OctetsStream.create(8);
 		this.marshalKey(os, key);
-		Octets ovalue = G.storage.get(this.getId(), os.toOctets());
+		Octets ovalue = Storage.getInstance().get(this.getId(), os.toOctets());
 		if(ovalue == null) return null;
 		OctetsStream vos = OctetsStream.wrap(ovalue);
 		Object value = this.unmarshalValue(vos);
@@ -53,7 +48,7 @@ public class TablePer extends Table {
 	
 	@Override
 	public void walk(final Walk w) {
-		G.storage.walk(this.getId(), new Walker() {
+		Storage.getInstance().walk(this.getId(), new Walker() {
 			@Override
 			public boolean onProcess(Octets key, Octets value) {
 				try {

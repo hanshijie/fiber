@@ -6,7 +6,7 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.TreeSet;
 
-import fiber.common.Wrapper;
+import fiber.db.Wrapper;
 import fiber.io.Log;
 
 public class WSet<W> extends Wrapper<Set<W>> implements Set<W> {
@@ -25,7 +25,7 @@ public class WSet<W> extends Wrapper<Set<W>> implements Set<W> {
 	private final Class<? extends Set<W>> clazz;
 	
 	@SuppressWarnings("unchecked")
-	public WSet(Class<?> c, Set<W> w, fiber.common.Wrapper.Notifier n) {
+	public WSet(Class<?> c, Set<W> w, fiber.db.Wrapper.Notifier n) {
 		super(w, n);
 		this.clazz = (Class<? extends Set<W>>) c;
 	}

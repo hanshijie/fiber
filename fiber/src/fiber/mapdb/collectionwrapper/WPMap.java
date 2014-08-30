@@ -2,7 +2,7 @@ package fiber.mapdb.collectionwrapper;
 
 import java.util.Map;
 
-import fiber.common.Wrapper;
+import fiber.db.Wrapper;
 import fiber.pcollections.HashMap;
 
 public class WPMap<K, V> extends WMap<K, V> {
@@ -18,7 +18,7 @@ public class WPMap<K, V> extends WMap<K, V> {
 		return new WPMap<T, U>(c, w, n);
 	}
 	
-	public WPMap(Class<?> c, Map<K, V> w, fiber.common.Wrapper.Notifier n) {
+	public WPMap(Class<?> c, Map<K, V> w, fiber.db.Wrapper.Notifier n) {
 		super(c, w, n);
 		assert(c == HashMap.class);
 	}
