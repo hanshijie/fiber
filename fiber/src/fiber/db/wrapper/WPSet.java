@@ -1,4 +1,4 @@
-package fiber.mapdb.collectionwrapper;
+package fiber.db.wrapper;
 
 import java.util.Set;
 

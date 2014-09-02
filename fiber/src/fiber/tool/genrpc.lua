@@ -430,7 +430,7 @@ tc.vector = merge(tc.binary, {
 	marshalscheme = function(var, tc) return string.format("\tpublic static void marshalscheme_%s(OctetsStream os, %s x) { os.marshalUInt(x.size()); for(%s e : x) marshalscheme_%s(os, e); }", var.sid, var.finaltype, var.finalvalue, get_sidtype(var.value)) end,
 	unmarshalscheme = function(var, tc) return string.format("\tpublic static %s unmarshalscheme_%s(OctetsStream os) throws MarshalException { %s y = new %s(); for(int n = os.unmarshalUInt() ; n > 0 ; n--) y.add(unmarshalscheme_%s(os)); return y; }", var.finaltype, var.sid, var.finaltype, var.finaltype, get_sidtype(var.value)) end,
 	
-	wrapperbasetype = "fiber.mapdb.collectionwrapper.WList",
+	wrapperbasetype = "fiber.db.wrapper.WList",
 	finalwrappertype = function (var, tc) return string.format("%s<%s>", tc.wrapperbasetype, var.finalvalue) end,
 	wrappergettersetter = function(var, tc) 
 		local finalwrappertype = tc.finalwrappertype(var, tc)
@@ -444,7 +444,7 @@ tc.vector = merge(tc.binary, {
 
 tc.hashset = merge(tc.vector, {
 	finalbasetype = "HashSet",
-	wrapperbasetype = "fiber.mapdb.collectionwrapper.WSet",
+	wrapperbasetype = "fiber.db.wrapper.WSet",
 })
 
 tc.treeset = merge(tc.hashset, {
@@ -466,7 +466,7 @@ tc.hashmap = merge(tc.treeset, {
 	marshalscheme = function(var, tc) return string.format("\tpublic static void marshalscheme_%s(OctetsStream os, %s x) { os.marshalUInt(x.size()); for(Map.Entry<%s, %s> e : x.entrySet()) { marshal_%s(os, e.getKey()); marshalscheme_%s(os, e.getValue()); } }", var.sid, var.finaltype, var.finalkey, var.finalvalue, get_sidtype(var.key), get_sidtype(var.value)) end,
 	unmarshalscheme = function(var, tc) return string.format("\tpublic static %s unmarshalscheme_%s(OctetsStream os) throws MarshalException { %s y = new %s(); for(int n = os.unmarshalUInt() ; n > 0 ; n--) y.put(unmarshal_%s(os), unmarshalscheme_%s(os)); return y; }", var.finaltype, var.sid, var.finaltype, var.finaltype, get_sidtype(var.key), get_sidtype(var.value)) end,
 	
-	wrapperbasetype = "fiber.mapdb.collectionwrapper.WMap",
+	wrapperbasetype = "fiber.db.wrapper.WMap",
 	finalwrappertype = function (var, tc) return string.format("%s<%s, %s>", tc.wrapperbasetype, var.finalkey, var.finalvalue) end,
 })
 
@@ -500,17 +500,17 @@ tc.bean = merge(tc.binary, {
 
 tc.pvector = merge(tc.vector, {
 	finalbasetype = "fiber.pcollections.ArrayList",	
-	wrapperbasetype = "fiber.mapdb.collectionwrapper.WPList",
+	wrapperbasetype = "fiber.db.wrapper.WPList",
 })
 
 tc.phashset = merge(tc.hashset, {
 	finalbasetype = "fiber.pcollections.HashSet",
-	wrapperbasetype = "fiber.mapdb.collectionwrapper.WPSet",
+	wrapperbasetype = "fiber.db.wrapper.WPSet",
 })
 
 tc.phashmap = merge(tc.hashmap, {
 	finalbasetype = "fiber.pcollections.HashMap",
-	wrapperbasetype = "fiber.mapdb.collectionwrapper.WPMap",
+	wrapperbasetype = "fiber.db.wrapper.WPMap",
 })
 
 local function processvar(i, var)
