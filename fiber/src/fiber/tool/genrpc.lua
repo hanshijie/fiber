@@ -513,6 +513,48 @@ tc.phashmap = merge(tc.hashmap, {
 	wrapperbasetype = "fiber.mapdb.collectionwrapper.WPMap",
 })
 
+local function processvar(i, var)
+	local helper = helperClass .. "."
+	var.type = var.type:gsub("%s", "")
+	var.basetype = get_basetype(var.type)
+	local ttype = typeclass[var.basetype]
+	for _, field in ipairs({"sid", "basetype", "key", "value", "finalkey", "finalvalue", "finaltype", "default", }) do
+		var[field] = ttype[field] and ttype[field](var, ttype)
+	end
+	helptypes[var.sid] = var
+	
+	var.clone = helper .. "clone_" .. var.sid
+	var.hashcode = helper .. "hashcode_" .. var.sid
+	var.equals = helper .. "equals_" .. var.sid
+	var.compareto = helper .. "compareto_" .. var.sid
+	var.tostring = helper .. "tostring_" .. var.sid
+	var.marshal = helper .. "marshal_" .. var.sid
+	var.unmarshal = helper .. "unmarshal_" .. var.sid
+	var.marshalscheme = helper .. "marshalscheme_" .. var.sid
+	var.unmarshalscheme = helper .. "unmarshalscheme_" .. var.sid
+	
+	var.bean_define = string.format("\t%s %s;\n", var.finaltype, var.name)
+	var.bean_arg = string.format("%s %s", var.finaltype, var.name)
+	var.bean_init = string.format("\t\tthis.%s = %s;\n", var.name, var.name)
+	var.bean_default_init = string.format("\t\tthis.%s = %s;\n", var.name, var.default)
+	var.bean_clone = string.format("\t\to.%s = %s(this.%s);\n", var.name, var.clone, var.name)
+	var.bean_hashcode = string.format("\t\th = h * 31 + %s(this.%s);\n", var.hashcode, var.name)
+	var.bean_equals = string.format("\t\tif(!%s(this.%s, _o.%s)) return false;\n", var.equals, var.name, var.name)
+	var.bean_compareto = string.format("\t\tif((c = %s(this.%s, _o.%s)) != 0) return c;\n", var.compareto, var.name, var.name)
+	var.bean_tostring = string.format("\t\ts.append(\"%s = \"); s.append(%s(this.%s)); s.append(\", \");\n", var.name, var.tostring, var.name)
+	var.bean_marshal = string.format("\t\t%s(os, this.%s);\n", var.marshal, var.name)
+	var.bean_unmarshal = string.format("\t\tthis.%s = %s(os);\n", var.name, var.unmarshal)
+	
+	var.bean_marshalscheme = string.format("%s(os, this.%s);", var.marshalscheme, var.name)
+	var.bean_unmarshalscheme = string.format("this.%s = %s(os);", var.name, var.unmarshalscheme)
+	var.bean_getter_setter = string.format([=[ 
+	public final %s get%s() { return this.%s; }
+	public final void set%s(%s %s) { this.%s = %s; }
+]=], var.finaltype, var.name, var.name, var.name, var.finaltype, var.name, var.name, var.name)
+	if i ~= 1 then
+		var.bean_arg = ", " .. var.bean_arg
+	end
+end
 
 function bean(b) 
 	if allbeans[b.name] then
@@ -531,56 +573,20 @@ function bean(b)
 			table.insert(allhandlers[handler].beans, b)
 		end
 	end
-	
-	local helper = helperClass .. "."
+
 	for i, var in ipairs(b) do
-		var.type = var.type:gsub("%s", "")
-		var.basetype = get_basetype(var.type)
-		local ttype = typeclass[var.basetype]
-		for _, field in ipairs({"sid", "basetype", "key", "value", "finalkey", "finalvalue", "finaltype", "default", }) do
-			var[field] = ttype[field] and ttype[field](var, ttype)
-		end
-		helptypes[var.sid] = var
-		
-		var.clone = helper .. "clone_" .. var.sid
-		var.hashcode = helper .. "hashcode_" .. var.sid
-		var.equals = helper .. "equals_" .. var.sid
-		var.compareto = helper .. "compareto_" .. var.sid
-		var.tostring = helper .. "tostring_" .. var.sid
-		var.marshal = helper .. "marshal_" .. var.sid
-		var.unmarshal = helper .. "unmarshal_" .. var.sid
-		var.marshalscheme = helper .. "marshalscheme_" .. var.sid
-		var.unmarshalscheme = helper .. "unmarshalscheme_" .. var.sid
-		
-		var.bean_define = string.format("\t%s %s;\n", var.finaltype, var.name)
-		var.bean_arg = string.format("%s %s", var.finaltype, var.name)
-		var.bean_init = string.format("\t\tthis.%s = %s;\n", var.name, var.name)
-		var.bean_default_init = string.format("\t\tthis.%s = %s;\n", var.name, var.default)
-		var.bean_clone = string.format("\t\to.%s = %s(this.%s);\n", var.name, var.clone, var.name)
-		var.bean_hashcode = string.format("\t\th = h * 31 + %s(this.%s);\n", var.hashcode, var.name)
-		var.bean_equals = string.format("\t\tif(!%s(this.%s, _o.%s)) return false;\n", var.equals, var.name, var.name)
-		var.bean_compareto = string.format("\t\tif((c = %s(this.%s, _o.%s)) != 0) return c;\n", var.compareto, var.name, var.name)
-		var.bean_tostring = string.format("\t\ts.append(\"%s = \"); s.append(%s(this.%s)); s.append(\", \");\n", var.name, var.tostring, var.name)
-		var.bean_marshal = string.format("\t\t%s(os, this.%s);\n", var.marshal, var.name)
-		var.bean_unmarshal = string.format("\t\tthis.%s = %s(os);\n", var.name, var.unmarshal)
-		
-		var.bean_marshalscheme = string.format("%s(os, this.%s);", var.marshalscheme, var.name)
-		var.bean_unmarshalscheme = string.format("this.%s = %s(os);", var.name, var.unmarshalscheme)
-		var.bean_getter_setter = string.format([=[ 
-	public final %s get%s() { return this.%s; }
-	public final void set%s(%s %s) { this.%s = %s; }
-]=], var.finaltype, var.name, var.name, var.name, var.finaltype, var.name, var.name, var.name)
-		if i ~= 1 then
-			var.bean_arg = ", " .. var.bean_arg
-		end
+		processvar(i, var)
+	end
+	if not b.rpc then
+		processvar(0, { name = "___", type = b.name, })
 	end
 end
 
 function rpc(r) 
-	bean(r)
 	r.rpc = true
 	r.arg = r.arg and r.arg or r.name .. "Arg"
 	r.res = r.res and r.res or r.name .. "Res"
+	bean(r)
 end
 
 function handler(h)

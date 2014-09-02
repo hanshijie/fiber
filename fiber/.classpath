@@ -7,5 +7,6 @@
 	<classpathentry kind="lib" path="E:/luajava-mirror.jar"/>
 	<classpathentry kind="lib" path="E:/googleconcurrentlinkedhashmap.jar"/>
 	<classpathentry kind="lib" path="E:/pcollections.jar"/>
+	<classpathentry kind="lib" path="E:/commons-csv-1.0.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
