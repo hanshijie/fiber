@@ -140,13 +140,13 @@ public final class CSVParser {
 	}
 	
 	public void dump() {
-		Log.trace("file:%s line:%s pos:%s", this.fileName, this.line, this.pos);
+		Log.info("file:%s line:%s pos:%s", this.fileName, this.line, this.pos);
 		for(ArrayList<String> line : this.datas) {
 			String s = "";
 			for(String field : line) {
 				s = s + "<" + field + ">";
 			}
-			Log.trace("%s", s);
+			Log.info("%s", s);
 		}
 	}
 	

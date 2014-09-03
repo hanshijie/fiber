@@ -195,12 +195,12 @@ public class WList<W> extends Wrapper<List<W>> implements List<W> {
 		assert(w.isModify());
 		w.add(N, N * N);
 		assert(w.size() == N + 2);
-		Log.trace("wrapper:%s", w);
+		Log.info("wrapper:%s", w);
 		for(int i = 0 ; i < N + 2 ; i++) {
 			w.remove(N  + 1 - i);
 			assert(w.size() == N  + 1 - i);
 		}
-		Log.trace("wrapper:%s", w);
+		Log.info("wrapper:%s", w);
 	}
 	
 	public static void test2(List<Integer> list) {
@@ -217,12 +217,12 @@ public class WList<W> extends Wrapper<List<W>> implements List<W> {
 		assert(w.isModify());
 		w.add(N, N * N);
 		assert(w.size() == N + 2);
-		Log.trace("wrapper:%s", w);
+		Log.info("wrapper:%s", w);
 		for(int i = 0 ; i < N + 2 ; i++) {
 			w.remove(N  + 1 - i);
 			assert(w.size() == N  + 1 - i);
 		}
-		Log.trace("wrapper:%s", w);
+		Log.info("wrapper:%s", w);
 	}
 
 	public static void main(String[] args) {

@@ -10,7 +10,7 @@ import fiber.io.*;
 public class SessionInfoHandler extends BeanHandler<SessionInfo> {
 	@Override
 	public void onProcess(final IOSession session, final SessionInfo arg) {
-		Log.trace("SessionInfoHandler.onProcess. sessionid:%d, arg:%s", session.getId(), arg);
+		Log.info("SessionInfoHandler.onProcess. sessionid:%d, arg:%s", session.getId(), arg);
 		/*
 		TaskPool.execute(new Procedure() {
 			@Override

@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -25,61 +26,66 @@ import static fiber.io.Log.*;
 public class Transaction {
 	
 	public final static class Logger {
+		private final Transaction txn;
+		public Logger(Transaction txn) {
+			this.txn = txn;
+		}
+		
 		private static final class LogInfo {
-			public final String level;
+			public final int level;
 			public final String msg;
-			LogInfo(String l, String f) {
+			LogInfo(int l, String f) {
 				this.level = l;
 				this.msg = f;
 			}
 		}
+		private static final int log_level = Const.log_level;
 		private ArrayList<LogInfo> logs = new ArrayList<LogInfo>();		
 		public void debug(String fmt, Object... objects) {
-			if(Const.log_level <= LOG_DEBUG) {
-				logs.add(new LogInfo("debug", String.format(fmt, objects)));
+			if(log_level <= LOG_DEBUG) {
+				logs.add(new LogInfo(LOG_DEBUG, String.format(fmt, objects)));
+			}
+		}
+		
+		public void trace(String fmt, Object... objects) {
+			if(log_level <= LOG_TRACE) {
+				logs.add(new LogInfo(LOG_TRACE, String.format(fmt, objects)));
 			}
 		}
 		
 		public void info(String fmt, Object... objects) {
-			if(Const.log_level <= LOG_INFO) {
-				logs.add(new LogInfo("info", String.format(fmt, objects)));
-			}
-		}
-		
-		
-		public void trace(String fmt, Object... objects) {
-			if(Const.log_level <= LOG_TRACE) {
-				logs.add(new LogInfo("trace", String.format(fmt, objects)));
+			if(log_level <= LOG_INFO) {
+				logs.add(new LogInfo(LOG_INFO, String.format(fmt, objects)));
 			}
 		}
 		
 		public void notice(String fmt, Object... objects) {
-			if(Const.log_level <= LOG_NOTICE) {
-				logs.add(new LogInfo("notice", String.format(fmt, objects)));
+			if(log_level <= LOG_NOTICE) {
+				logs.add(new LogInfo(LOG_NOTICE, String.format(fmt, objects)));
 			}
 		}
 		
 		public void warn(String fmt, Object... objects) {
-			if(Const.log_level <= LOG_WARN) {
-				logs.add(new LogInfo("warn", String.format(fmt, objects)));
+			if(log_level <= LOG_WARN) {
+				logs.add(new LogInfo(LOG_WARN, String.format(fmt, objects)));
 			}
 		}
 		
 		public void err(String fmt, Object... objects) {
-			if(Const.log_level <= LOG_ERR) {
-				logs.add(new LogInfo("err", String.format(fmt, objects)));
+			if(log_level <= LOG_ERR) {
+				logs.add(new LogInfo(LOG_ERR, String.format(fmt, objects)));
 			}
 		}
 		
 		public void alert(String fmt, Object... objects) {
-			if(Const.log_level <= LOG_ALERT) {
-				logs.add(new LogInfo("alert", String.format(fmt, objects)));
+			if(log_level <= LOG_ALERT) {
+				logs.add(new LogInfo(LOG_ALERT, String.format(fmt, objects)));
 			}
 		}
 		
 		public void fatal(String fmt, Object... objects) {
-			if(Const.log_level <= LOG_FATAL) {
-				logs.add(new LogInfo("fatal", String.format(fmt, objects)));
+			if(log_level <= LOG_FATAL) {
+				logs.add(new LogInfo(LOG_FATAL, String.format(fmt, objects)));
 			}
 		}
 		
@@ -88,8 +94,9 @@ public class Transaction {
 		}
 
 		public void commit() {
+			String txnStr = this.txn.toString();
 			for(LogInfo log : this.logs) {
-				Log.logSimple(log.level, log.msg);
+				Log.logSimple(log.level, txnStr + log.msg);
 			}
 		}
 
@@ -121,8 +128,6 @@ public class Transaction {
 				IOSession session = manager.getOnlySession();
 				if(session != null) {
 					session.write(data);
-				} else {
-					Log.warn("ClientManager:%s send fail. data:%s", manager, data.dump());
 				}
 			}
 		}
@@ -202,11 +207,15 @@ public class Transaction {
 	private final Logger logger;	
 	private final Dispatcher dispatcher;
 	private final TreeSet<Integer> lockSet;
+	
+	private final static AtomicLong TXN_ID = new AtomicLong(0);
+	private long txnid;
 	public Transaction() {
 		this.dataMap = new HashMap<WKey, WValue>();
-		this.logger = new Logger();
+		this.logger = new Logger(this);
 		this.lockSet = new TreeSet<Integer>();
 		this.dispatcher = new Dispatcher();
+		this.txnid = 0;
 	}
 	
 	public final Logger getLogger() {
@@ -216,6 +225,10 @@ public class Transaction {
 	public final Dispatcher getDispatcher() {
 		return this.dispatcher;
 	}
+	
+	public final long getTxnid() {
+		return this.txnid;
+	}
 
 	private final void clearDatas() {
 		this.dataMap.clear();
@@ -224,17 +237,18 @@ public class Transaction {
 	}
 	
 	public final void prepare() {
+		this.txnid = TXN_ID.incrementAndGet();
 		//this.clearDatas();
 	}
 	
 	public void commit() throws ConflictException {
-		Log.info("%s commit. start.", this);
+		Log.trace("%s commit. start.", this);
 		this.lock();
 		for(WValue value : this.dataMap.values()) {
 			if(value.isConflict() || value.getTvalue().isShrink()) {
 				// 一般来说,检查到冲突后会redo,出于优化考虑
 				// 不释放锁.
-				Log.info("%s confliction detected!", this);
+				Log.trace("%s confliction detected!", this);
 				throw ConflictException.INSTANCE;
 			}
 		}
@@ -248,18 +262,23 @@ public class Transaction {
 		this.logger.commit();
 		this.dispatcher.commit();
 		this.unlock();
-		Log.info("%s commit. end.", this);
+		Log.trace("%s commit. end.", this);
 	}
 	
 	public void rollback() {
 		this.clearDatas();
-		Log.info("%s rollback", this);
+		Log.trace("%s rollback", this);
 	}
 	
 	public void end() {
 		this.clearDatas();
 		this.unlock();
-		Log.info("%s end", this);
+		Log.trace("%s end", this);
+	}
+	
+	@Override
+	public final String toString() {
+		return String.format("[txnid:%s]", this.getTxnid());
 	}
 	
 	public final WValue getData(WKey key) {
@@ -315,7 +334,7 @@ public class Transaction {
 	
 	public void dump() {
 		for(Map.Entry<WKey, WValue> e : this.dataMap.entrySet()) {
-			Log.trace("{key=%s, value=%s}", e.getKey(), e.getValue());
+			Log.info("{key=%s, value=%s}", e.getKey(), e.getValue());
 		}
 	}
 	
@@ -330,7 +349,7 @@ public class Transaction {
 		lock.lock();
 		try{
 			if(inCommitDataMap != null) {
-				Log.alert("Transation.getWaitCommitDataMap. inCommitDataMap not commit succ? retry.");
+				Log.warn("Transation.getWaitCommitDataMap. inCommitDataMap not commit succ? retry.");
 				return inCommitDataMap;
 			}
 			inCommitDataMap = waitCommitDataMap;
@@ -373,7 +392,7 @@ public class Transaction {
 				WValue value = e.getValue();
 				if(value.isModify() && key.getTable().isPersist()) {
 					waitCommitDataMap.put(key, value);
-					Log.info("waitCommitMap.put [%s]=>{origin:%s, cur:%s}", key, value.getOriginValue(), value.getCurValue());
+					Log.trace("waitCommitMap.put [%s]=>{origin:%s, cur:%s}", key, value.getOriginValue(), value.getCurValue());
 				}
 			}
 		} finally {

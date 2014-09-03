@@ -138,7 +138,7 @@ public final class BDBStorage extends Storage {
 						int nextBackupTime = nextIncBackupTime < nextFullBackupTime ? nextIncBackupTime : nextFullBackupTime;
 						now = Timer.currentTime();
 						Thread.sleep((nextBackupTime - now) * 1000);
-						Log.trace("BDBStorage.backup  active.");
+						Log.info("BDBStorage.backup  active.");
 						env.flushLog(true);
 						if(nextIncBackupTime <= now) {
 							nextIncBackupTime = now + incrementalBackupInterval;
@@ -156,8 +156,7 @@ public final class BDBStorage extends Storage {
 							Log.notice("BDBStorage.backup full end");
 						}
 					} catch(Exception e) {
-						Log.alert("BDBStorage.backup  exception:%s", e);
-						e.printStackTrace();
+						Log.alert("BDBStorage.backup  exception:%s", Log.etos(e));
 					}
 				}
 			}
@@ -187,7 +186,7 @@ public final class BDBStorage extends Storage {
 	
 	public void addTable(int dbid, String dbname) {
 		Database db = this.env.openDatabase(null, dbname, this.dbConf);
-		Log.trace("database open. id:%d name:%s", dbid, dbname);
+		Log.info("database open. id:%d name:%s", dbid, dbname);
 		ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 		this.databases.put(dbid, new DTable(db, lock.readLock(), lock.writeLock()));	
 	}
@@ -303,8 +302,7 @@ public final class BDBStorage extends Storage {
 			this.env.truncateDatabase(txn, dbName, false);
 			txn.commit();
 		} catch (DatabaseException e) {
-			Log.err("BDBStorage.clearTable fail. tableid:%d,  expetion:%s", tableid, e);
-			e.printStackTrace();
+			Log.err("BDBStorage.clearTable fail. tableid:%d,  expetion:%s", tableid, Log.etos(e));
 			txn.abort();
 			return false;
 		} finally {
@@ -421,8 +419,7 @@ public final class BDBStorage extends Storage {
 			return true;
 		} catch (Exception e) {
 			Log.alert(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
-			Log.alert("BDBStorage.putDatas fail! exception:%s", e);
-			e.printStackTrace();
+			Log.alert("BDBStorage.putDatas fail! exception:%s", Log.etos(e));
 			Log.alert(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
 			txn.abort();
 			return false;

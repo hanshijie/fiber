@@ -56,8 +56,7 @@ public class TablePer extends Table {
 					Object ovalue = unmarshalValue(OctetsStream.wrap(value));
 					return w.onProcess(TablePer.this, okey, new TValue(ovalue));
 				} catch(Exception e) {
-					Log.err("TablePer.walk. exception:%s", e);
-					e.printStackTrace();
+					Log.err("TablePer.walk. exception:%s", Log.etos(e));
 					return true;
 				}
 			}

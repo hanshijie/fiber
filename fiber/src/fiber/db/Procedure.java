@@ -16,6 +16,7 @@ public abstract class Procedure implements Runnable {
 	
 	protected void prepare() {
 		this.txn = Transaction.get();
+		this.txn.prepare();
 	}
 	
 	protected final void rollback() {
@@ -28,7 +29,7 @@ public abstract class Procedure implements Runnable {
 
 	protected final void end() {
 		this.txn.end();
-		Log.info("%s. procedure:%s end.", Thread.currentThread(), this);
+		Log.trace("%s end.", this.txn, this);
 	}
 	
 	protected Transaction txn;
@@ -67,14 +68,21 @@ public abstract class Procedure implements Runnable {
 		}
 	}
 	
+	protected final void trigger(int retcode) throws RetException {
+		RetException.trigger(retcode);
+	}
+	
+	protected final void trigger(int retcode, Object content) throws RetException {
+		RetException.trigger(retcode, content);
+	}
+	
 	abstract protected void execute() throws Exception;
 	abstract protected void onRetError(int retcode, Object content);
 	
 	protected void onException(Exception e) {
-		Log.err("%s.onException. exception:%s", this, e);
-		e.printStackTrace();
+		Log.alert("%s %s.onException. exception:%s", this.txn, this, Log.etos(e));
 	}
 	protected void onFail() {
-		Log.alert("%s.onFail.", this);
+		Log.alert("%s %s.onFail.", this.txn, this);
 	}
 }

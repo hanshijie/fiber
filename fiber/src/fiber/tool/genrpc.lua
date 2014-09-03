@@ -327,20 +327,20 @@ local function merge(a, b)
 	return c
 end
 
-function get_basetype(type)
+local function get_basetype(type)
 	local pos = type:find("<", 1, true)
 	return pos and type:sub(1, pos - 1) or (typeclass[type] and type or "bean")
 end
 	
-function get_sidtype(type)
+local function get_sidtype(type)
 	return type:gsub(">", ""):gsub("[^%w]", "_")
 end
 
-function get_objtype(rawtype)
+local function get_objtype(rawtype)
 	return get_container_keytype(rawtype)
 end
 
-function get_widtype(type)
+local function get_widtype(type)
 	return type:gsub("[^%w]", "")
 end
 

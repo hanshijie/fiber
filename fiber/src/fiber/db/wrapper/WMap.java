@@ -176,11 +176,11 @@ public class WMap<K, V> extends Wrapper<Map<K, V>> implements Map<K, V> {
 		assert(w.keySet().size() == w.size());
 		assert(w.values().size() == w.size());
 		assert(map.size() == N);
-		Log.trace("wrapper:%s", w);
-		Log.trace("============>");
+		Log.info("wrapper:%s", w);
+		Log.info("============>");
 
 		
-		Log.trace("############");
+		Log.info("############");
 		
 	}
 	
@@ -233,11 +233,11 @@ public class WMap<K, V> extends Wrapper<Map<K, V>> implements Map<K, V> {
 		assert(w.keySet().size() == w.size());
 		assert(w.values().size() == w.size());
 		assert(map.size() == N);
-		Log.trace("wrapper:%s", w);
-		Log.trace("============>");
+		Log.info("wrapper:%s", w);
+		Log.info("============>");
 
 		
-		Log.trace("############");
+		Log.info("############");
 		
 	}
 	

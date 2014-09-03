@@ -141,12 +141,12 @@ public class WSet<W> extends Wrapper<Set<W>> implements Set<W> {
 			assert(w.isModify());
 			assert(w.size() == i + 1);
 		}
-		Log.trace("wrapper:%s", w);
+		Log.info("wrapper:%s", w);
 		for(int i = 0 ; i < N * 2 ; i++) {
 			w.remove(i);
 			assert(w.size() == N * 2 - 1 - i);
 		}
-		Log.trace("wrapper:%s", w);
+		Log.info("wrapper:%s", w);
 		assert(set.size() == N);
 		
 	}
@@ -165,12 +165,12 @@ public class WSet<W> extends Wrapper<Set<W>> implements Set<W> {
 			assert(w.isModify());
 			assert(w.size() == i + 1);
 		}
-		Log.trace("wrapper:%s", w);
+		Log.info("wrapper:%s", w);
 		for(int i = 0 ; i < N * 2 ; i++) {
 			w.remove(i);
 			assert(w.size() == N * 2 - 1 - i);
 		}
-		Log.trace("wrapper:%s", w);
+		Log.info("wrapper:%s", w);
 		assert(set.size() == N);
 		
 	}

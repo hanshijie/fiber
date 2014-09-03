@@ -34,13 +34,13 @@ public abstract class IOManager {
 	}
 
 	protected void onAddSessionIntern(IOSession s) {
-		Log.trace("onAddSession:%d", s.getId());
+		Log.info("onAddSession:%d", s.getId());
 		this.sessionMap.put(s.getId(), s);
 		onAddSession(s);
 	}
 	
 	protected void onDelSessionIntern(IOSession s) {
-		Log.trace("onDelSession:%d", s.getId());
+		Log.info("onDelSession:%d", s.getId());
 		this.sessionMap.remove(s.getId());
 		onDelSession(s);
 	}
@@ -100,7 +100,7 @@ public abstract class IOManager {
 			IOTransportor handler = new IOTransportor(this, getPoller(), sc);
 			handler.onOpen();
 			*/
-			Log.trace("directly conn succ. addr:%s", conf.getAddr());
+			Log.info("directly conn succ. addr:%s", conf.getAddr());
 		}
 		Connector conn = new Connector(this, getPoller(), sc);
 		conn.permitConnect();

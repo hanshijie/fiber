@@ -68,10 +68,10 @@ public class CallbackFuture<V> implements Future<V> {
 			Thread t = new Thread(new Runnable() {
 				@Override
 				public void run() {
-					Log.trace("try get");
+					Log.info("try get");
 					try {
 						String result = f.get();
-						Log.trace("result:%s", result);
+						Log.info("result:%s", result);
 					} catch (InterruptedException e) {
 						e.printStackTrace();
 					}
@@ -86,7 +86,7 @@ public class CallbackFuture<V> implements Future<V> {
 			Thread.sleep(2000);
 			f.set("hell");
 			Thread.sleep(2000);
-			Log.trace("exit..");
+			Log.info("exit..");
 		} catch (InterruptedException e) {
 
 		}

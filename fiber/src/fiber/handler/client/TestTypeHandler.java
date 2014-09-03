@@ -10,7 +10,7 @@ import fiber.io.*;
 public class TestTypeHandler extends BeanHandler<TestType> {
 	@Override
 	public void onProcess(final IOSession session, final TestType arg) {
-		Log.trace("TestTypeHandler.onProcess. sessionid:%d, arg:%s", session.getId(), arg);
+		Log.info("TestTypeHandler.onProcess. sessionid:%d, arg:%s", session.getId(), arg);
 		/*
 		TaskPool.execute(new Procedure() {
 			@Override

@@ -17,7 +17,7 @@ public class Server {
 		
 		try {
 			if(args.length != 1) {
-				Log.trace("Usage:  Server [loglevel] ");
+				Log.info("Usage:  Server [loglevel] ");
 				return;
 			}
 			final int logLevel = Integer.parseInt(args[0]);

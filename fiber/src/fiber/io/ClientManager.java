@@ -37,7 +37,7 @@ public class ClientManager extends NetManager {
 	}
 	
 	private final void reconnect() {
-		Log.trace("%s reconnect. backoff:%d", this, this.backoff);
+		Log.info("%s reconnect. backoff:%d", this, this.backoff);
 		schedule(new Runnable() {
 			@Override
 			public void run() {

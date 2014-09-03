@@ -55,10 +55,10 @@ public class DB extends Enviroment {
 		WKey key = new WKey(tUser, uid);
 		WValue value = txn.getData(key);
 		if(value != null) {
-			Log.trace("getUser from txn. key:%s", key);
+			Log.info("getUser from txn. key:%s", key);
 			return (WrapperInt)value.getWrapper();
 		} else {
-			Log.trace("getUser from table. key:%s", key);
+			Log.info("getUser from table. key:%s", key);
 			final TValue v = tUser.get(uid);
 			value = new WValue(v);
 			WrapperInt wrap = new WrapperInt((Integer)v.getValue(), new WValueNotifier(value));

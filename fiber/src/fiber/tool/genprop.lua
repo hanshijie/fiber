@@ -54,7 +54,6 @@ $(prop_getter_setter)
 $(prop_unmarshal)
 $(prop_nextline)
 		} catch(Exception e) {
-			e.printStackTrace();
 			os.dump();
 			throw e;
 		}

@@ -23,7 +23,7 @@ public final class IOSession {
 	
 	public void close() {
 		this.handler.close();
-		Log.trace("[session-%d] close", this.getId());
+		Log.info("[session-%d] close", this.getId());
 	}
 	
 	public void onClose() {
