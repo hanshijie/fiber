@@ -6,11 +6,12 @@ import fiber.common.TaskPool;
 */
 import fiber.bean.TestType;
 import fiber.io.*;
+import static fiber.io.Log.log;
 
 public class TestTypeHandler extends BeanHandler<TestType> {
 	@Override
 	public void onProcess(final IOSession session, final TestType arg) {
-		Log.info("TestTypeHandler.onProcess. sessionid:%d, arg:%s", session.getId(), arg);
+		log.info("TestTypeHandler.onProcess. sessionid:{}, arg:{}", session.getId(), arg);
 		/*
 		TaskPool.execute(new Procedure() {
 			@Override

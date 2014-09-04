@@ -1,11 +1,11 @@
 package fiber.test;
 
-import fiber.io.Log;
+import static fiber.io.Log.log;
 
 public class TestBean {
 
 	public static void main(String[] args) throws Exception {
-		Log.trace("%s", null instanceof Integer);
+		log.info("{}", null instanceof Integer);
 		long N = 10000000;
 		long M = 10;
 		for(int j = 0 ; j < M ; j++) {
@@ -13,7 +13,7 @@ public class TestBean {
 			for(int i = 0 ; i < N ; i++)
 				System.currentTimeMillis();
 			long t2 = System.currentTimeMillis();
-			Log.trace("average:%d", N * 1000 / (t2 - t1));
+			log.info("average:{}", N * 1000 / (t2 - t1));
 		}
 	}
 

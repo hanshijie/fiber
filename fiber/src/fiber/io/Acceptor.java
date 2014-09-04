@@ -5,6 +5,7 @@ import java.net.Socket;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import static fiber.io.Log.*;
 
 
 public final class Acceptor extends IOHandler {
@@ -33,7 +34,7 @@ public final class Acceptor extends IOHandler {
 		try {
 			client = server.accept();
 		} catch (IOException e) {
-			Log.alert("[%s] accept fail! exception:%s", this, e);
+			log.error("Acceptor. accept fail.", e);
 			close();
 			return;
 		}
@@ -50,11 +51,11 @@ public final class Acceptor extends IOHandler {
 			IOTransportor handler = new IOTransportor(getManager(), this.getPoller(), client);
 			handler.onOpen();
 		} catch (IOException e) {
-			Log.alert("[%s] init new connection fail! exception:%s", this, e);
+			log.error("Acceptor. create new connection fail.", e);
 			try {
 				client.close();
 			} catch (IOException e1) {
-				Log.err("Acceptior. close new connection:%s fail! exception:%s", client, e1);
+				log.error("Acceptior. close new connection fail.", e1);
 			}
 		}
 		
@@ -62,7 +63,7 @@ public final class Acceptor extends IOHandler {
 
 	@Override
 	protected void onClose() {
-		Log.fatal("[Accpetor-%s] close!", this);
+		log.error("Acceptor close.");
 	}
 	
 }

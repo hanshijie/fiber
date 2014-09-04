@@ -8,7 +8,7 @@ import fiber.db.TablePer;
 import fiber.db.Transaction;
 import fiber.db.WKey;
 import fiber.db.WValue;
-import fiber.io.Log;
+import static fiber.io.Log.log;
 import fiber.bean.*;
 import static fiber.bean._.*;
 
@@ -36,10 +36,10 @@ public class DB extends Enviroment {
 		WKey key = new WKey(tUser, uid);
 		WValue value = txn.getData(key);
 		if(value != null) {
-			Log.trace("getUser from txn. key:%s", key);
+			log.debug("getUser from txn. key:{}", key);
 			return (<Wrapper>)value.getWrapper();
 		} else {
-			Log.trace("getUser from table. key:%s", key);
+			log.debug("getUser from table. key:{}", key);
 			final TValue v = tUser.get(uid);
 			value = new WValue(v);
 			<Wrapper> wrap = new <Wrapper>((KeyType)v.getValue(), new WValueNotifier(value));
@@ -55,10 +55,10 @@ public class DB extends Enviroment {
 		WKey key = new WKey(tUser, uid);
 		WValue value = txn.getData(key);
 		if(value != null) {
-			Log.info("getUser from txn. key:%s", key);
+			log.debug("getUser from txn. key:{}", key);
 			return (WrapperInt)value.getWrapper();
 		} else {
-			Log.info("getUser from table. key:%s", key);
+			log.debug("getUser from table. key:{}", key);
 			final TValue v = tUser.get(uid);
 			value = new WValue(v);
 			WrapperInt wrap = new WrapperInt((Integer)v.getValue(), new WValueNotifier(value));

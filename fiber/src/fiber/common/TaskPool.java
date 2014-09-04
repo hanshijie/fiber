@@ -5,8 +5,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
+
 import fiber.io.Const;
-import fiber.io.Log;
+import static fiber.io.Log.log;
 
 public class TaskPool {
 	// 当出现所有线程都已阻塞,并且等待某些未执行的任务执行结束才能继续执行的情形,
@@ -31,13 +34,14 @@ public class TaskPool {
 		noblockExecutor.execute(task);
 	}
 	
+	private final static Marker SCHEDULE = MarkerFactory.getMarker("SCHEDULE");
 	public static void schedule(Runnable task, long delay, TimeUnit unit) {
-		Log.debug("schedule %s %d", task, delay);
+		log.debug(SCHEDULE, "task:{} delay:{} timeunit:{}", task, delay, unit);
 		normalScheduleExecutor.schedule(task, delay, unit);
 	}
 	
 	public static void scheduleAtFixedRate(Runnable task, long initialDelay, long period, TimeUnit unit) {
-		Log.debug("schedule %s %d %d", task, initialDelay, period);
+		log.debug(SCHEDULE, "task:{} initDelay:{} period:{} timeunit:{}", task, initialDelay, period, unit);
 		TaskPool.normalScheduleExecutor.scheduleAtFixedRate(task, initialDelay, period, unit);
 	}
 

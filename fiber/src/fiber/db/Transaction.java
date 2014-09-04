@@ -11,96 +11,21 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
+
 import fiber.common.TaskPool;
 import fiber.io.Bean;
 import fiber.io.BeanCodec;
 import fiber.io.ClientManager;
-import fiber.io.Const;
 import fiber.io.IOSession;
-import fiber.io.Log;
+import static fiber.io.Log.log;
 import fiber.io.Octets;
 import fiber.io.RpcBean;
 import fiber.io.RpcHandler;
-import static fiber.io.Log.*;
+import fiber.io.Timer;
 
 public class Transaction {
-	
-	public final static class Logger {
-		private final Transaction txn;
-		public Logger(Transaction txn) {
-			this.txn = txn;
-		}
-		
-		private static final class LogInfo {
-			public final int level;
-			public final String msg;
-			LogInfo(int l, String f) {
-				this.level = l;
-				this.msg = f;
-			}
-		}
-		private static final int log_level = Const.log_level;
-		private ArrayList<LogInfo> logs = new ArrayList<LogInfo>();		
-		public void debug(String fmt, Object... objects) {
-			if(log_level <= LOG_DEBUG) {
-				logs.add(new LogInfo(LOG_DEBUG, String.format(fmt, objects)));
-			}
-		}
-		
-		public void trace(String fmt, Object... objects) {
-			if(log_level <= LOG_TRACE) {
-				logs.add(new LogInfo(LOG_TRACE, String.format(fmt, objects)));
-			}
-		}
-		
-		public void info(String fmt, Object... objects) {
-			if(log_level <= LOG_INFO) {
-				logs.add(new LogInfo(LOG_INFO, String.format(fmt, objects)));
-			}
-		}
-		
-		public void notice(String fmt, Object... objects) {
-			if(log_level <= LOG_NOTICE) {
-				logs.add(new LogInfo(LOG_NOTICE, String.format(fmt, objects)));
-			}
-		}
-		
-		public void warn(String fmt, Object... objects) {
-			if(log_level <= LOG_WARN) {
-				logs.add(new LogInfo(LOG_WARN, String.format(fmt, objects)));
-			}
-		}
-		
-		public void err(String fmt, Object... objects) {
-			if(log_level <= LOG_ERR) {
-				logs.add(new LogInfo(LOG_ERR, String.format(fmt, objects)));
-			}
-		}
-		
-		public void alert(String fmt, Object... objects) {
-			if(log_level <= LOG_ALERT) {
-				logs.add(new LogInfo(LOG_ALERT, String.format(fmt, objects)));
-			}
-		}
-		
-		public void fatal(String fmt, Object... objects) {
-			if(log_level <= LOG_FATAL) {
-				logs.add(new LogInfo(LOG_FATAL, String.format(fmt, objects)));
-			}
-		}
-		
-		public void clear() {
-			logs.clear();
-		}
-
-		public void commit() {
-			String txnStr = this.txn.toString();
-			for(LogInfo log : this.logs) {
-				Log.logSimple(log.level, txnStr + log.msg);
-			}
-		}
-
-	}
 	
 	public static final class Dispatcher {
 		static final class Job1 implements Runnable {
@@ -204,22 +129,19 @@ public class Transaction {
 
 	
 	private final HashMap<WKey, WValue> dataMap;
-	private final Logger logger;	
 	private final Dispatcher dispatcher;
 	private final TreeSet<Integer> lockSet;
+	
+	private long cacheTxnid = 0;
+	private int cacheNow = 0;
 	
 	private final static AtomicLong TXN_ID = new AtomicLong(0);
 	private long txnid;
 	public Transaction() {
 		this.dataMap = new HashMap<WKey, WValue>();
-		this.logger = new Logger(this);
 		this.lockSet = new TreeSet<Integer>();
 		this.dispatcher = new Dispatcher();
 		this.txnid = 0;
-	}
-	
-	public final Logger getLogger() {
-		return this.logger;
 	}
 	
 	public final Dispatcher getDispatcher() {
@@ -232,8 +154,21 @@ public class Transaction {
 
 	private final void clearDatas() {
 		this.dataMap.clear();
-		this.logger.clear();
 		this.dispatcher.clear();
+	}
+	
+	/** 
+	 * @return 获得缓存的当前时间now. now在整个事务期间不变.
+	 * 这个特性在很多情形下很有用.如果直接使用Timer.currentTime(),
+	 * 在处理请求的过程的得到的now有可能前后不一致,
+	 * 导致一些难以发现的bug. 
+	 */
+	public final int cacheCurrentTime() {
+		if(this.cacheTxnid != this.txnid) {
+			this.cacheTxnid = this.txnid;
+			this.cacheNow = Timer.currentTime();
+		}
+		return this.cacheNow;
 	}
 	
 	public final void prepare() {
@@ -242,13 +177,13 @@ public class Transaction {
 	}
 	
 	public void commit() throws ConflictException {
-		Log.trace("%s commit. start.", this);
+		log.debug("{} commit. start.", this);
 		this.lock();
 		for(WValue value : this.dataMap.values()) {
 			if(value.isConflict() || value.getTvalue().isShrink()) {
 				// 一般来说,检查到冲突后会redo,出于优化考虑
 				// 不释放锁.
-				Log.trace("%s confliction detected!", this);
+				log.debug("{} confliction detected!", this);
 				throw ConflictException.INSTANCE;
 			}
 		}
@@ -259,26 +194,26 @@ public class Transaction {
 			key.getTable().onUpdate(key, value.getTvalue());
 		}
 		commitModifyData();
-		this.logger.commit();
 		this.dispatcher.commit();
 		this.unlock();
-		Log.trace("%s commit. end.", this);
+		log.debug("{} commit. end.", this);
 	}
 	
 	public void rollback() {
 		this.clearDatas();
-		Log.trace("%s rollback", this);
+		log.info("{} rollback", this);
+		this.txnid = TXN_ID.incrementAndGet();
 	}
 	
 	public void end() {
 		this.clearDatas();
 		this.unlock();
-		Log.trace("%s end", this);
+		log.debug("{} end", this);
 	}
 	
 	@Override
 	public final String toString() {
-		return String.format("[txnid:%s]", this.getTxnid());
+		return "[TXN:" + this.getTxnid() + "]";
 	}
 	
 	public final WValue getData(WKey key) {
@@ -334,7 +269,7 @@ public class Transaction {
 	
 	public void dump() {
 		for(Map.Entry<WKey, WValue> e : this.dataMap.entrySet()) {
-			Log.info("{key=%s, value=%s}", e.getKey(), e.getValue());
+			log.info("{} dump. dataMap {key={}, value={}}", this, e.getKey(), e.getValue());
 		}
 	}
 	
@@ -343,18 +278,19 @@ public class Transaction {
 	private final static Lock waitCommitWriteLock = waitCommitRWLock.writeLock();
 	private static ConcurrentHashMap<WKey, WValue> waitCommitDataMap = new ConcurrentHashMap<WKey, WValue>();
 	private static ConcurrentHashMap<WKey, WValue> inCommitDataMap = null;
+	private static final Marker COMMIT = MarkerFactory.getMarker("COMMIT");
 
 	public static Map<WKey, WValue> getWaitCommitDataMap() {
 		Lock lock = waitCommitWriteLock;
 		lock.lock();
 		try{
 			if(inCommitDataMap != null) {
-				Log.warn("Transation.getWaitCommitDataMap. inCommitDataMap not commit succ? retry.");
+				log.warn(COMMIT, "inCommitDataMap not commit succ? retry.");
 				return inCommitDataMap;
 			}
 			inCommitDataMap = waitCommitDataMap;
 			waitCommitDataMap = new ConcurrentHashMap<WKey, WValue>();
-			Log.notice("=====> new inCommitDataMap. size:%d", inCommitDataMap.size());
+			log.info(COMMIT, "new inCommitDataMap. size:{}", inCommitDataMap.size());
 			return inCommitDataMap;
 		} finally {
 			lock.unlock();
@@ -367,7 +303,7 @@ public class Transaction {
 		lock.lock();
 		try {
 			inCommitDataMap = null;
-			Log.notice("=====> commit finish.");
+			log.info(COMMIT, "done finish.");
 		} finally {
 			lock.unlock();
 		}
@@ -392,7 +328,7 @@ public class Transaction {
 				WValue value = e.getValue();
 				if(value.isModify() && key.getTable().isPersist()) {
 					waitCommitDataMap.put(key, value);
-					Log.trace("waitCommitMap.put [%s]=>{origin:%s, cur:%s}", key, value.getOriginValue(), value.getCurValue());
+					log.debug("waitCommitMap.put [{}]=>{origin:{}, cur:{}}", key, value.getOriginValue(), value.getCurValue());
 				}
 			}
 		} finally {

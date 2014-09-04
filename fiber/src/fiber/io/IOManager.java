@@ -8,6 +8,8 @@ import java.nio.channels.SocketChannel;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static fiber.io.Log.log;
+
 public abstract class IOManager {
 	private final IOPoller poller;
 	private final IOConfig config;
@@ -34,13 +36,13 @@ public abstract class IOManager {
 	}
 
 	protected void onAddSessionIntern(IOSession s) {
-		Log.info("onAddSession:%d", s.getId());
+		log.info("onAddSession:{}", s.getId());
 		this.sessionMap.put(s.getId(), s);
 		onAddSession(s);
 	}
 	
 	protected void onDelSessionIntern(IOSession s) {
-		Log.info("onDelSession:%d", s.getId());
+		log.info("onDelSession:{}", s.getId());
 		this.sessionMap.remove(s.getId());
 		onDelSession(s);
 	}
@@ -71,14 +73,13 @@ public abstract class IOManager {
 	}
 	
 	public final void broadcast(Octets data) {
-		Log.debug("broadcast");
 		for(IOSession s : this.sessionMap.values()) {
 			s.write(data);
 		}	
 	}
 	
 	public final void closeAll() {
-		Log.debug("closeAll");
+		log.info("IOManager. closeAll");
 		for(IOSession s : this.sessionMap.values()) {
 			s.close();
 		}
@@ -100,7 +101,7 @@ public abstract class IOManager {
 			IOTransportor handler = new IOTransportor(this, getPoller(), sc);
 			handler.onOpen();
 			*/
-			Log.info("directly conn succ. addr:%s", conf.getAddr());
+			log.info("IOManager.startClient directly conn succ. addr:{}", conf.getAddr());
 		}
 		Connector conn = new Connector(this, getPoller(), sc);
 		conn.permitConnect();

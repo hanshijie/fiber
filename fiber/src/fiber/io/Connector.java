@@ -1,6 +1,8 @@
 package fiber.io;
 
 import java.io.IOException;
+import static fiber.io.Log.log;
+
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
@@ -19,7 +21,7 @@ public final class Connector extends IOHandler {
 	
 	@Override
 	protected void onHandle(SelectionKey key) {
-		Log.debug("Connector-%s:", this);
+		log.debug("Connector.onHandler {}:", this);
 		SocketChannel channel = (SocketChannel)getChannel();
 		try {
 			if(channel.finishConnect()) {
@@ -35,7 +37,7 @@ public final class Connector extends IOHandler {
 
 	@Override
 	protected void onClose() {
-		Log.err("[Connector-%s] fail", this);
+		log.error("Connector.onClose {}", this);
 		this.getManager().onAbortSession(this);
 	}
 }

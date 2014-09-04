@@ -11,7 +11,7 @@ local open = io.open
 
 local root = root or "../.."
 local prop_path = prop_path or "fiber/prop"
-local helperClass = "_"
+local helper_class = "_"
 local namespace = namespace or "fiber"
 local suffix = '.csv'
 
@@ -308,7 +308,7 @@ tc.prop = merge(tc.int, {
 })
 
 local function processvar(i, var)
-	local helper = helperClass .. "."	
+	local helper = helper_class .. "."	
 	if var.skipline or var.skiprow then
 		var.prop_define = ""
 		var.prop_default_init = ""
@@ -475,8 +475,8 @@ end
 
 function gen_helpers()
 	local ctx = context
-	ctx.helper_class = helperClass
-	local path = string.format("%s/%s/%s.java", root, prop_path, helperClass)
+	ctx.helper_class = helper_class
+	local path = string.format("%s/%s/%s.java", root, prop_path, helper_class)
 	gen_save(template_helper, path, ctx)
 end
 

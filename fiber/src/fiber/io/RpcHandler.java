@@ -1,5 +1,6 @@
 package fiber.io;
 
+import static fiber.io.Log.log;
 /**
  * RPC处理器的基类(抽象类)
  * <p>
@@ -10,16 +11,16 @@ package fiber.io;
 public abstract class RpcHandler<A extends Bean<A>, R extends Bean<R>> extends BeanHandler<RpcBean<A, R>>
 {
 	public boolean onServer(IOSession session, A arg, R res) throws Exception {
-		Log.alert("bean<%s>.onServer unprocess!", this.getClass().getSimpleName());
+		log.error("bean<{}>.onServer unprocess!", this.getClass().getSimpleName());
 		return true;
 	}
 
 	public void onClient(IOSession session, A arg, R res) throws Exception {
-		Log.alert("bean<%s>.onClient unprocess!", this.getClass().getSimpleName());
+		log.error("bean<{}>.onClient unprocess!", this.getClass().getSimpleName());
 	}
 
 	public void onTimeout(IOSession session, A arg) throws Exception {
-		Log.warn("bean<%s>.onTimeout unprocess!", this.getClass().getSimpleName());
+		log.warn("bean<{}>.onTimeout unprocess!", this.getClass().getSimpleName());
 	}
 
 	@SuppressWarnings("unchecked")

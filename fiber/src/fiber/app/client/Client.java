@@ -8,8 +8,8 @@ import fiber.io.BeanHandler;
 import fiber.io.ClientManager;
 import fiber.io.IOConfig;
 import fiber.io.IOPoller;
-import fiber.io.Log;
 import fiber.io.Octets;
+import static fiber.io.Log.log;
 
 public class Client {
 
@@ -20,7 +20,6 @@ public class Client {
 				System.out.print("usage. Client [ip] [port] [connectNum] [taskNum]");
 				return;
 			}
-			System.setProperty("log_level", Integer.valueOf(Log.LOG_INFO).toString());
 			String addr = args[0];
 			short port = Short.parseShort(args[1]);
 			final int CONNECT_NUM = Integer.parseInt(args[2]);
@@ -55,7 +54,7 @@ public class Client {
 				}
 			}
 			
-			Log.notice("end ..");
+			log.info("end ..");
 			
 		} catch (Exception e2) {
 			e2.printStackTrace();

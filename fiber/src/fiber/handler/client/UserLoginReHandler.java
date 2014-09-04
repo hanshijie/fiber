@@ -2,10 +2,11 @@ package fiber.handler.client;
 
 import fiber.bean.UserLoginRe;
 import fiber.io.*;
+import static fiber.io.Log.log;
 
 public class UserLoginReHandler extends BeanHandler<UserLoginRe> {
 	@Override
 	public void onProcess(final IOSession session, final UserLoginRe arg) {
-		Log.notice("UserLoginRe. retcode:%d logintime:%d", arg.getretcode(), arg.gettime());
+		log.info("UserLoginRe. retcode:{} logintime:{}", arg.getretcode(), arg.gettime());
 	}
 }

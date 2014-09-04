@@ -3,6 +3,7 @@ package fiber.io;
 import java.util.Map;
 
 import fiber.bean.AllBeans;
+import static fiber.io.Log.log;
 
 public final class BeanCodec extends ProtocolCodec {
 	private final Map<Integer, BeanHandler<?>> handlerStub;
@@ -26,18 +27,18 @@ public final class BeanCodec extends ProtocolCodec {
 				step = 1;
 				BeanHandler<?> handler = handlerStub.get(type);
 				if(handler == null) {
-					Log.err("[session-%d] unhandle type:%d", session.getId(), type);
+					log.error("[session-{}] unhandle type:{}", session.getId(), type);
 					session.close();
 					return;
 				}
 				Bean<?> bean = beanStub.get(type);
 				if(bean == null) {
-					Log.err("[session-%d] unkown bean type:%d", session.getId(), type);
+					log.error("[session-{}] unkown bean type:{}", session.getId(), type);
 					session.close();
 					return;
 				}
 				if(size > bean.maxsize()) {
-					Log.err("[session-%d] bean<%s> type:%d size:%d exceed maxsize:%d",
+					log.error("[session-{}] bean<{}> type:{} size:{} exceed maxsize:{}",
 						session.getId(), bean.getClass().getSimpleName(), type, size, bean.maxsize());
 					session.close();
 					return;
@@ -54,7 +55,7 @@ public final class BeanCodec extends ProtocolCodec {
 				try {
 					handler.process(session, newBean);
 				} catch (Exception e) {
-					Log.err("[session-%d] bean:%s process exception:%s",
+					log.error("[session-{}] bean:{} process exception:{}",
 							session.getId(), bean, e);
 					session.close();
 					return;
@@ -65,9 +66,9 @@ public final class BeanCodec extends ProtocolCodec {
 		} catch (MarshalException e) {
 			if(step == 0) {
 				is.setHead(lastHead);
-				//Log.fatal("remain:%s", is.toOctets().dump().toString());
+				//Log.fatal("remain:{}", is.toOctets().dump().toString());
 			} else {
-				Log.warn("[session-%d] unmarshal fail!", session.getId());
+				log.warn("[session-{}] unmarshal fail!", session.getId());
 				//Log.trace(is.toOctets().dump().toString());
 				session.close();
 			}
@@ -79,7 +80,7 @@ public final class BeanCodec extends ProtocolCodec {
 	public Octets encode(IOSession session, Object obj) {
 		Bean<?> bean = (Bean<?>)obj;
 		//if(data.size() > bean.getMaxSize()) {
-		//	Log.alert("bean<%s> size:%d exceed maxsize:%d", bean.getClass().getSimpleName(), data.size(), bean.getMaxSize());
+		//	Log.alert("bean<{}> size:{} exceed maxsize:{}", bean.getClass().getSimpleName(), data.size(), bean.getMaxSize());
 		//}
 		return encode(bean);
 		//session.write(encode(bean));

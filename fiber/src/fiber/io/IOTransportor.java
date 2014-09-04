@@ -1,10 +1,13 @@
 package fiber.io;
 
 import java.io.IOException;
+
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
+
+import static fiber.io.Log.log;
 
 public final class IOTransportor extends IOHandler {
 	private final Object operLock;
@@ -30,7 +33,7 @@ public final class IOTransportor extends IOHandler {
 			if((this.opers & SelectionKey.OP_READ) == 0) {
 				this.opers |= SelectionKey.OP_READ;
 				register(this.opers);
-				Log.debug("[session-%d] permitRead", this.session.getId());
+				log.debug("[session-{}] permitRead", this.session.getId());
 			}
 		}
 	}
@@ -40,7 +43,7 @@ public final class IOTransportor extends IOHandler {
 			if((this.opers & SelectionKey.OP_READ) != 0) {
 				this.opers &= ~SelectionKey.OP_READ;
 				register(this.opers);
-				Log.debug("[session-%d] forbidRead", this.session.getId());
+				log.debug("[session-{}] forbidRead", this.session.getId());
 			}
 		}
 	}
@@ -50,7 +53,7 @@ public final class IOTransportor extends IOHandler {
 			if((this.opers & SelectionKey.OP_WRITE) == 0) {
 				this.opers |= SelectionKey.OP_WRITE;
 				register(this.opers);
-				Log.debug("[session-%d] permitWrite", this.session.getId());
+				log.debug("[session-{}] permitWrite", this.session.getId());
 			}
 		}
 	}
@@ -60,7 +63,7 @@ public final class IOTransportor extends IOHandler {
 			if((this.opers & SelectionKey.OP_WRITE) != 0) {
 				this.opers &= ~SelectionKey.OP_WRITE;
 				register(this.opers);
-				Log.debug("[session-%d] forbidWrite", this.session.getId());
+				log.debug("[session-{}] forbidWrite", this.session.getId());
 			}
 		}
 	}
@@ -81,7 +84,7 @@ public final class IOTransportor extends IOHandler {
 					close();
 					return;
 				}
-				Log.debug("[session-%d] read data byte:%d", this.session.getId(), readByte);
+				log.debug("[session-{}] read data byte:{}", this.session.getId(), readByte);
 				this.session.onRead(this.inputBuffer);
 			}
 			if(key.isWritable()) {
@@ -91,7 +94,7 @@ public final class IOTransportor extends IOHandler {
 					close();
 					return;
 				}	
-				Log.debug("[session-%d] write data byte:%d", this.session.getId(), writeByte);
+				log.debug("[session-{}] write data byte:{}", this.session.getId(), writeByte);
 				if(this.outputBuffer.remaining() == 0) {
 					this.session.checkForbidWrite();
 				}
@@ -110,7 +113,7 @@ public final class IOTransportor extends IOHandler {
 	
 	@Override
 	protected void onClose() {
-		Log.debug("[IOTransportor-%d] onclose", this.session.getId());
+		log.debug("[IOTransportor-{}] onclose", this.session.getId());
 		this.getManager().onDelSessionIntern(this.session);
 		this.session.onClose();
 	}

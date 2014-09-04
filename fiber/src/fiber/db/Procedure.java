@@ -1,8 +1,10 @@
 package fiber.db;
 
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
+
 import fiber.db.Transaction.Dispatcher;
-import fiber.db.Transaction.Logger;
-import fiber.io.Log;
+import static fiber.io.Log.log;
 
 public abstract class Procedure implements Runnable {
 	private final int maxRedoCount;
@@ -27,18 +29,17 @@ public abstract class Procedure implements Runnable {
 		this.txn.commit();
 	}
 
+	private final static Marker PROCEDURE = MarkerFactory.getMarker("PROCEDURE"); 
 	protected final void end() {
 		this.txn.end();
-		Log.trace("%s end.", this.txn, this);
+		log.debug(PROCEDURE, "{} end.", this.txn);
 	}
 	
 	protected Transaction txn;
-	protected Logger log;
 	protected Dispatcher net;
 	public final void run() {
 		try {
 			this.prepare();
-			this.log = txn.getLogger();
 			this.net = txn.getDispatcher();
 			
 			for(int i = 0 ; i < this.maxRedoCount ; i++) {
@@ -80,9 +81,10 @@ public abstract class Procedure implements Runnable {
 	abstract protected void onRetError(int retcode, Object content);
 	
 	protected void onException(Exception e) {
-		Log.alert("%s %s.onException. exception:%s", this.txn, this, Log.etos(e));
+		log.error(PROCEDURE, "{} onException. {}", this.txn, e);
+		log.error(PROCEDURE, "", e);
 	}
 	protected void onFail() {
-		Log.alert("%s %s.onFail.", this.txn, this);
+		log.error(PROCEDURE, "{} {}.onFail.", this.txn, this);
 	}
 }

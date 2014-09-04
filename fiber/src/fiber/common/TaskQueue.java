@@ -3,7 +3,7 @@ package fiber.common;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import fiber.io.Const;
-import fiber.io.Log;
+import static fiber.io.Log.log;
 
 public class TaskQueue implements Runnable {
 	private final static int task_queue_batch = Const.getProperty("task_queue_batch", 128);
@@ -37,7 +37,7 @@ public class TaskQueue implements Runnable {
 				try {
 					task.run();
 				} catch(Exception e) {
-					Log.err("TaskQuee. task:%s exception:%s", task, e);
+					log.error("TaskQuee. task:{}", task, e);
 				}
 				if(++processedTaskNum >= task_queue_batch) {
 					schedule();

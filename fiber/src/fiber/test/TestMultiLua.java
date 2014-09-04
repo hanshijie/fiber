@@ -1,11 +1,11 @@
 package fiber.test;
 
-import fiber.io.Log;
+import static fiber.io.Log.log;
 
 public class TestMultiLua {
 
 	public static void main(String[] args) {
-		Log.notice("init...");
+		log.info("init...");
 /*
 		final String file = "src/mirror/test/hello.lua";
 		LuaState.setBaseDir("src/mirror/test");

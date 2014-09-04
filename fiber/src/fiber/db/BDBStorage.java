@@ -16,6 +16,11 @@ import java.util.TreeMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
+
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 import com.sleepycat.je.Cursor;
@@ -31,11 +36,11 @@ import com.sleepycat.je.Transaction;
 import com.sleepycat.je.TransactionConfig;
 import com.sleepycat.je.util.DbBackup;
 
-import fiber.io.Log;
 import fiber.io.Octets;
 import fiber.io.Timer;
 
 public final class BDBStorage extends Storage {
+	private final Logger log = LoggerFactory.getLogger(BDBStorage.class);
 	public static BDBStorage create(BDBConfig conf) {
 		return new BDBStorage(conf);
 	}
@@ -75,6 +80,7 @@ public final class BDBStorage extends Storage {
 	
 	Map<Integer, DTable> databases;
 	
+	private final static Marker BACKUP = MarkerFactory.getMarker("BACKUP"); 
 	BDBStorage(BDBConfig conf) {
 		this.closed = false;
 		// if environment root directory not exists, we create it.
@@ -114,6 +120,7 @@ public final class BDBStorage extends Storage {
 		}
 		
 		new Thread("BDBStorage.backup") {
+			
 			@Override
 			public void run() {
 				final int MIN_INCREMENTAL_BACKUP_INTERVAL = 6;
@@ -121,9 +128,9 @@ public final class BDBStorage extends Storage {
 				
 				boolean enableIncBackup = incrementalBackupInterval >= MIN_INCREMENTAL_BACKUP_INTERVAL;
 				boolean enableFullBackup = fullBackupInterval >= MIN_FULL_BACKUP_INTERVAL;
-				Log.notice("BDBStorage.backup init.");
-				Log.notice("BDBStorage.backup incrementBackupInterval:%d enable:%s", incrementalBackupInterval, enableIncBackup);
-				Log.notice("BDBStorage.backup fullBackupInterval:%d enable:%s", fullBackupInterval, enableFullBackup);
+				log.info(BACKUP, "init.");
+				log.info(BACKUP, "incrementBackupInterval:{} enable:{}", incrementalBackupInterval, enableIncBackup);
+				log.info(BACKUP, "fullBackupInterval:{} enable:{}", fullBackupInterval, enableFullBackup);
 				if(!enableIncBackup && !enableFullBackup) return;
 				
 				final SimpleDateFormat timeFormat = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
@@ -138,25 +145,25 @@ public final class BDBStorage extends Storage {
 						int nextBackupTime = nextIncBackupTime < nextFullBackupTime ? nextIncBackupTime : nextFullBackupTime;
 						now = Timer.currentTime();
 						Thread.sleep((nextBackupTime - now) * 1000);
-						Log.info("BDBStorage.backup  active.");
+						log.info(BACKUP, "backup active.");
 						env.flushLog(true);
 						if(nextIncBackupTime <= now) {
 							nextIncBackupTime = now + incrementalBackupInterval;
 							String incrementalBackupDir = String.format("%s/inc-%s", backupRoot ,timeFormat.format(new Date()));
-							Log.notice("BDBStorage.backup  incremental start. backup directory:%s lastFileId:%d", incrementalBackupDir, lastFileCopiedInPrevBackup);
+							log.info(BACKUP, "incremental start. backup directory:{} lastFileId:{}", incrementalBackupDir, lastFileCopiedInPrevBackup);
 							lastFileCopiedInPrevBackup = backup(incrementalBackupDir, lastFileCopiedInPrevBackup);
-							Log.notice("BDBStorage.backup  incremental end.");
+							log.info(BACKUP, "incremental end.");
 							saveToConfFile(backupConfFile, lastFileCopiedInPrevBackup);
 						}
 						if(nextFullBackupTime <= now) {
 							nextFullBackupTime = now + fullBackupInterval;
 							String fullBackupDir = String.format("%s/full-%s", backupRoot, timeFormat.format(new Date()));
-							Log.notice("BDBStorage.backup full start. backup directory:%s", fullBackupDir);
+							log.info(BACKUP, "full start. backup directory:{}", fullBackupDir);
 							backup(fullBackupDir, 0);
-							Log.notice("BDBStorage.backup full end");
+							log.info(BACKUP, "full end");
 						}
 					} catch(Exception e) {
-						Log.alert("BDBStorage.backup  exception:%s", Log.etos(e));
+						log.error(BACKUP, "backup fail.", e);
 					}
 				}
 			}
@@ -177,8 +184,9 @@ public final class BDBStorage extends Storage {
 					lines.add(Long.toString(lastFileCopiedInPrevBackup));
 					Files.write(Paths.get(backupConfFile), lines, ENCODING);
 				} catch(Exception e) {
-					Log.alert("BDBStorage.backup savetoConfFile fail.backupConfFile:%s lastFileCopiedInPrevBackup:%d  exception:%s",
-						backupConfFile, lastFileCopiedInPrevBackup, e);
+					log.error(BACKUP, "savetoConfFile fail.backupConfFile:{} lastFileCopiedInPrevBackup:{}",
+						backupConfFile, lastFileCopiedInPrevBackup);
+					log.error(BACKUP, "savetoConfFile", e);
 				}
 			}
 		}.start();
@@ -186,7 +194,7 @@ public final class BDBStorage extends Storage {
 	
 	public void addTable(int dbid, String dbname) {
 		Database db = this.env.openDatabase(null, dbname, this.dbConf);
-		Log.info("database open. id:%d name:%s", dbid, dbname);
+		log.info("database open. id:{} name:{}", dbid, dbname);
 		ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 		this.databases.put(dbid, new DTable(db, lock.readLock(), lock.writeLock()));	
 	}
@@ -255,7 +263,7 @@ public final class BDBStorage extends Storage {
 	}
 	
 	public boolean putData(Transaction txn , Database db, Octets key, Octets value) {
-		Log.debug("BDBStorage.putData  key:%s", key.dump());
+		log.debug("BDBStorage.putData  key:{}", key.dump());
 		DatabaseEntry dkey = new DatabaseEntry(key.array());
 		DatabaseEntry dvalue = new DatabaseEntry(value.array());
 		OperationStatus status = db.put(txn, dkey, dvalue);
@@ -263,7 +271,7 @@ public final class BDBStorage extends Storage {
 	}
 	
 	public boolean delData(Transaction txn , Database db, Octets key) {
-		Log.debug("BDBStorage. delData. key:%s", key.dump());
+		log.debug("BDBStorage. delData. key:{}", key.dump());
 		DatabaseEntry dkey = new DatabaseEntry(key.array());
 		OperationStatus status = db.delete(txn, dkey);
 		return (status == OperationStatus.SUCCESS);
@@ -302,7 +310,8 @@ public final class BDBStorage extends Storage {
 			this.env.truncateDatabase(txn, dbName, false);
 			txn.commit();
 		} catch (DatabaseException e) {
-			Log.err("BDBStorage.clearTable fail. tableid:%d,  expetion:%s", tableid, Log.etos(e));
+			log.error("BDBStorage.clearTable fail. tableid:{}", tableid);
+			log.error("BDBStorage.clearTable excpetion:", e);
 			txn.abort();
 			return false;
 		} finally {
@@ -312,9 +321,10 @@ public final class BDBStorage extends Storage {
 		return true;
 	}
 	
+	private final static Marker STORAGE_CLOSE = MarkerFactory.getMarker("STORAGE CLOSE");
 	public void close() {
 		synchronized(this) {
-			Log.notice("BDBStorage.close. begin.");
+			log.info(STORAGE_CLOSE, "begin.");
 			if(this.closed) return;
 			this.closed = true;
 			for (Map.Entry<Integer, DTable> e : this.databases.entrySet()) {
@@ -323,22 +333,22 @@ public final class BDBStorage extends Storage {
 				int tableid = e.getKey();
 				String name = db.getDatabaseName();
 				lock.lock(); // never unlock this locks to forbid another operations on closed databases.
-				Log.notice("table <%d, %s> close begin.", tableid, name);
+				log.info(STORAGE_CLOSE, "table <{}, {}> close begin.", tableid, name);
 				db.close();
-				Log.notice("table <%d, %s> close end.", tableid, name);
+				log.info(STORAGE_CLOSE, "table <{}, {}> close end.", tableid, name);
 			}
 			this.env.close();
-			Log.notice("BDBStorage.close end.");
+			log.info(STORAGE_CLOSE, "end.");
 		}
 	}
 	
 	synchronized public long backup(String backupDir, long lastFileCopiedInPrevBackup) throws IOException {
 		if(this.closed) return lastFileCopiedInPrevBackup;
-		Log.notice("BDBStorage.backup begin. backupDir:%s lastFileCopiedInPrevBackup:%d", backupDir, lastFileCopiedInPrevBackup);
+		log.info("BDBStorage.backup begin. backupDir:{} lastFileCopiedInPrevBackup:{}", backupDir, lastFileCopiedInPrevBackup);
 		File backupFile = new File(backupDir);
 		if(!backupFile.exists()) {
 			backupFile.mkdirs();
-			Log.notice("backupDir:%s no exist. create it.", backupDir);
+			log.info("backupDir:{} no exist. create it.", backupDir);
 		}
 	    DbBackup backupHelper = new DbBackup(this.env, lastFileCopiedInPrevBackup);
 
@@ -352,7 +362,7 @@ public final class BDBStorage extends Storage {
 	        }
 
 	        lastFileCopiedInPrevBackup = backupHelper.getLastFileInBackupSet();
-	        Log.notice("BDBStorage.backup end. backupDir:%s lastFileCopiedInPrevBackup:%d", backupDir, lastFileCopiedInPrevBackup);
+	        log.info("BDBStorage.backup end. backupDir:{} lastFileCopiedInPrevBackup:{}", backupDir, lastFileCopiedInPrevBackup);
 	        return lastFileCopiedInPrevBackup;
 	    } finally {
 	       backupHelper.endBackup();
@@ -362,6 +372,7 @@ public final class BDBStorage extends Storage {
 
 	@Override
 	public Octets get(int tableid, Octets key) {
+		log.debug(GET, "tableid:{} key:{}", tableid, key.dump());
 		DTable dTable = getTable(tableid);
 		Lock lock = dTable.rlock;
 		lock.lock();
@@ -375,6 +386,7 @@ public final class BDBStorage extends Storage {
 	
 	@Override
 	public boolean put(int tableid, Octets key, Octets value) {
+		log.debug(PUT, "tableid:{} key:{} value:{}", tableid, key.dump(), value);
 		DTable dTable = getTable(tableid);
 		Lock lock = dTable.wlock;
 		lock.lock();
@@ -386,12 +398,30 @@ public final class BDBStorage extends Storage {
 		}		
 	}
 	
+
+	@Override
+	public boolean del(int tableid, Octets key) {
+		log.debug(DEL, "tableid:{} key:{}", tableid, key.dump());
+		DTable dTable = getTable(tableid);
+		Lock lock = dTable.wlock;
+		lock.lock();
+		try {
+			Database db = dTable.getDatabase();
+			return delData(null, db, key);
+		} finally {
+			lock.unlock();
+		}
+	}
+	
 	@Override
 	public Map<Integer, ArrayList<Octets>> get(
 			Map<Integer, ArrayList<Octets>> tableDatasMap) {
 		return null;
 	}
 	
+	private final static Marker PUT = MarkerFactory.getMarker("STORAGE PUT");
+	private final static Marker GET = MarkerFactory.getMarker("STORAGE GET");
+	private final static Marker DEL = MarkerFactory.getMarker("STORAGE DEL");
 	@Override
 	public boolean put(Map<Integer, ArrayList<Pair>> tableDatasMap) {
 		TreeMap<Integer, Boolean> locks = new TreeMap<Integer, Boolean>();
@@ -418,9 +448,9 @@ public final class BDBStorage extends Storage {
 			txn.commit();
 			return true;
 		} catch (Exception e) {
-			Log.alert(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
-			Log.alert("BDBStorage.putDatas fail! exception:%s", Log.etos(e));
-			Log.alert(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+			log.error(PUT, ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+			log.error(PUT, "fail!", e);
+			log.error(PUT, ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
 			txn.abort();
 			return false;
 		} finally {
@@ -428,24 +458,13 @@ public final class BDBStorage extends Storage {
 		}
 	}
 
-	@Override
-	public boolean del(int tableid, Octets key) {
-		DTable dTable = getTable(tableid);
-		Lock lock = dTable.wlock;
-		lock.lock();
-		try {
-			Database db = dTable.getDatabase();
-			return delData(null, db, key);
-		} finally {
-			lock.unlock();
-		}
-	}
 
+	private final static Marker CHECKPOINT = MarkerFactory.getMarker("CHECKPOINT");
 	@Override
 	public void checkpoint() throws Exception {
 		// unnecessary to invoke environment.checkpoint();
 		this.env.flushLog(true);
-		
+		log.info(CHECKPOINT, "succ.");
 	}
 	
 

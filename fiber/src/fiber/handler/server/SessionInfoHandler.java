@@ -6,11 +6,12 @@ import fiber.common.TaskPool;
 */
 import fiber.bean.SessionInfo;
 import fiber.io.*;
+import static fiber.io.Log.log;
 
 public class SessionInfoHandler extends BeanHandler<SessionInfo> {
 	@Override
 	public void onProcess(final IOSession session, final SessionInfo arg) {
-		Log.info("SessionInfoHandler.onProcess. sessionid:%d, arg:%s", session.getId(), arg);
+		log.info("SessionInfoHandler.onProcess. sessionid:{}, arg:{}", session.getId(), arg);
 		/*
 		TaskPool.execute(new Procedure() {
 			@Override

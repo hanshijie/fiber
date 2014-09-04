@@ -1,6 +1,6 @@
 package fiber.db;
 
-import fiber.io.Log;
+import static fiber.io.Log.log;
 
 
 public abstract class Wrapper<W> {
@@ -36,7 +36,7 @@ public abstract class Wrapper<W> {
 	public final void checkModify() {
 		if(!isModify()) {
 			this.data = this.shallowClone();
-			Log.debug("BeanW.checkModify. data:%s", this.data);
+			log.debug("Wrapper.checkModify. data:{}", this.data);
 			notifier.onChange(this.data);
 		}
 	}
@@ -46,7 +46,7 @@ public abstract class Wrapper<W> {
 	 */
 	public final void forceModify() {
 		//this.data = this.shallowClone();
-		Log.debug("BeanW.forceModify. origin_data:%s data:%s", this.origin_data, this.data);
+		log.debug("Wrapper.forceModify. origin_data:{} data:{}", this.origin_data, this.data);
 		notifier.onChange(this.data);
 	}
 	

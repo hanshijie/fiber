@@ -8,7 +8,7 @@ import fiber.db.TValue;
 import fiber.db.Table;
 import fiber.db.TablePer;
 import fiber.db.Table.Walk;
-import fiber.io.Log;
+import static fiber.io.Log.log;
 
 public class BDBTest {
 
@@ -32,7 +32,7 @@ public class BDBTest {
 			int i = 0;
 			@Override
 			public boolean onProcess(Table table, Object key, TValue value) {
-				Log.trace("[%d] walk. key:%s value:%s", ++i, key, value);
+				log.trace("[{}] walk. key:{} value:{}", ++i, key, value);
 				return true;
 			}
 			

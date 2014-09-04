@@ -4,7 +4,7 @@ import javax.script.Invocable;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 
-import fiber.io.Log;
+import static fiber.io.Log.log;
 
 public class JavascriptBenchmark {
 
@@ -12,7 +12,7 @@ public class JavascriptBenchmark {
 		ScriptEngineManager sem = new ScriptEngineManager();
 
 		try {
-			Log.notice("init...");
+			log.info("init...");
 
 			int K = 1; // Integer.parseInt(args[0]);
 			String cmd = "function count(sum) { for(var i = 0 ; i < 100000 ; i++) sum += i; return sum; }";
@@ -26,10 +26,10 @@ public class JavascriptBenchmark {
 					long t1 = System.currentTimeMillis();
 					for (int i = 0; i < N; i++) {
 						Object re = f.invokeFunction("count", 0);
-						Log.trace("[%d] %s", i, re);
+						log.info("[{}] {}", i, re);
 					}
 					long t2 = System.currentTimeMillis();
-					Log.trace("average:%d", N * 1000 / (t2 - t1));
+					log.info("average:{}", N * 1000 / (t2 - t1));
 				}
 
 			}

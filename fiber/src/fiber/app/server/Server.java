@@ -8,7 +8,7 @@ import fiber.io.BeanHandler;
 import fiber.io.IOConfig;
 import fiber.io.IOPoller;
 import fiber.io.IOSession;
-import fiber.io.Log;
+import static fiber.io.Log.log;
 import fiber.io.ServerManager;
 
 public class Server {
@@ -17,11 +17,9 @@ public class Server {
 		
 		try {
 			if(args.length != 1) {
-				Log.info("Usage:  Server [loglevel] ");
+				log.error("Usage:  Server [loglevel] ");
 				return;
 			}
-			final int logLevel = Integer.parseInt(args[0]);
-			System.setProperty("log_level", Integer.valueOf(logLevel).toString());
 
 			//final String LUA_FILE = args[2];
 			IOPoller poller = new IOPoller(1);
@@ -54,7 +52,7 @@ public class Server {
 			
 			//LuaState.setBaseDir(new File(LUA_FILE).getParent());
 			//LuaState.setInitLuaFile(LUA_FILE);
-			Log.notice("init succ...");
+			log.info("init succ...");
 			poller.runBackground();
 			
 		} catch (Exception e2) {

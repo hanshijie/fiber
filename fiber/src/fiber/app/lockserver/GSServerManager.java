@@ -5,8 +5,8 @@ import java.util.Map;
 import fiber.io.BeanHandler;
 import fiber.io.IOPoller;
 import fiber.io.IOSession;
-import fiber.io.Log;
 import fiber.io.ServerManager;
+import static fiber.io.Log.log;
 
 public class GSServerManager extends ServerManager {
 
@@ -23,10 +23,10 @@ public class GSServerManager extends ServerManager {
 	
 	public boolean bindGSSession(Integer gsid, IOSession session) {
 		if(this.gs2SessionMap.containsKey(gsid)) {
-			Log.err("dumplicate gsid:%d", gsid);
+			log.error("dumplicate gsid:{}", gsid);
 			return false;
 		}
-		Log.trace("bindGSSession. gsid:%d sessionid:%d", gsid, session.getId());
+		log.trace("bindGSSession. gsid:{} sessionid:{}", gsid, session.getId());
 		this.gs2SessionMap.put(gsid, session);
 		this.session2gsMap.put(session, gsid);
 		return true;
@@ -36,7 +36,7 @@ public class GSServerManager extends ServerManager {
 	protected void onDelSession(IOSession session) {
 		Integer gsid = this.session2gsMap.get(session);
 		if(gsid != null) {
-			Log.trace("onDelSession. gsid:%d", gsid);
+			log.trace("onDelSession. gsid:{}", gsid);
 			this.session2gsMap.remove(session);
 			this.gs2SessionMap.remove(gsid);
 		}

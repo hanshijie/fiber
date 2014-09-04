@@ -1,7 +1,10 @@
 package fiber.app.server;
 
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
+
 import fiber.db.Storage;
-import fiber.io.Log;
+import static fiber.io.Log.log;
 
 public final class G {
 	
@@ -14,6 +17,7 @@ public final class G {
 	
 	
 	
+	private static final Marker SHUT_DOWN = MarkerFactory.getMarker("SHUTDOWN");
 	static {
 		Runtime.getRuntime().addShutdownHook(
 			new Thread("JVMShutDown") {
@@ -22,25 +26,25 @@ public final class G {
 					try {
 						shutdown();
 					} catch (Exception e) {
-						Log.fatal("JVMShutDown error. exception:%s", e);
+						log.error(SHUT_DOWN, "JVMShutDown error", e);
 					}
 				}
 			});
 	}
 	
 	private static void shutdown() {
-		Log.notice("========  JVM shutdown begin =======");
+		log.info(SHUT_DOWN, "========  JVM shutdown begin =======");
 		Storage storage = Storage.getInstance();
 		if(storage != null) {
 			DB.flush();
 			try {
 				storage.checkpoint();
 			} catch (Exception e) {
-				Log.alert("storage.checkpoint fail. exception:%s", e);
+				log.error(SHUT_DOWN, "storage.checkpoint fail.", e);
 			}
 			storage.close();
 		}
-		Log.notice("========  JVM shutdown end   =======");
+		log.info(SHUT_DOWN, "========  JVM shutdown end   =======");
 	}
 
 }

@@ -171,7 +171,7 @@ public final class OctetsStream {
 		if(newSize < this.data.length) {
 			System.arraycopy(this.data, this.head, this.data, 0, this.tail -= this.head);
 			this.head = 0;
-			Log.debug("after shift. head:%d tail:%d length:%d", head, tail, data.length);
+			//Log.debug("after shift. head:%d tail:%d length:%d", head, tail, data.length);
 		} else {
 			int probSize = 16;
 			while(probSize < newSize)
@@ -180,7 +180,7 @@ public final class OctetsStream {
 			System.arraycopy(this.data, this.head, newData, 0, this.tail -= this.head);
 			this.data = newData;
 			this.head = 0;
-			Log.debug("after resize. head:%d tail:%d length:%d", head, tail, data.length);
+			//Log.debug("after resize. head:%d tail:%d length:%d", head, tail, data.length);
 		}
 	}
 	

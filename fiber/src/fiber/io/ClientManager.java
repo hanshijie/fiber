@@ -2,6 +2,7 @@ package fiber.io;
 
 import java.io.IOException;
 import java.util.Map;
+import static fiber.io.Log.log;
 
 public class ClientManager extends NetManager {
 	private boolean reconn;
@@ -37,14 +38,15 @@ public class ClientManager extends NetManager {
 	}
 	
 	private final void reconnect() {
-		Log.info("%s reconnect. backoff:%d", this, this.backoff);
+		log.info("{} reconnect. backoff:{}", this, this.backoff);
 		schedule(new Runnable() {
 			@Override
 			public void run() {
 				try {
 					ClientManager.this.startClient();
 				} catch (IOException e) {
-					Log.warn("[%s] reconnect fail. exception:%s", this, e);
+					log.warn("[{}] reconnect fail. exception:{}", this, e);
+					log.warn("", e);
 				}
 			}
 			

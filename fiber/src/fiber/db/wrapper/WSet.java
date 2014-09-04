@@ -7,7 +7,7 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import fiber.db.Wrapper;
-import fiber.io.Log;
+import static fiber.io.Log.log;
 
 public class WSet<W> extends Wrapper<Set<W>> implements Set<W> {
 	public static <V> WSet<V> create(Set<V> set) {
@@ -141,12 +141,12 @@ public class WSet<W> extends Wrapper<Set<W>> implements Set<W> {
 			assert(w.isModify());
 			assert(w.size() == i + 1);
 		}
-		Log.info("wrapper:%s", w);
+		log.info("wrapper:{}", w);
 		for(int i = 0 ; i < N * 2 ; i++) {
 			w.remove(i);
 			assert(w.size() == N * 2 - 1 - i);
 		}
-		Log.info("wrapper:%s", w);
+		log.info("wrapper:{}", w);
 		assert(set.size() == N);
 		
 	}
@@ -165,12 +165,12 @@ public class WSet<W> extends Wrapper<Set<W>> implements Set<W> {
 			assert(w.isModify());
 			assert(w.size() == i + 1);
 		}
-		Log.info("wrapper:%s", w);
+		log.info("wrapper:{}", w);
 		for(int i = 0 ; i < N * 2 ; i++) {
 			w.remove(i);
 			assert(w.size() == N * 2 - 1 - i);
 		}
-		Log.info("wrapper:%s", w);
+		log.info("wrapper:{}", w);
 		assert(set.size() == N);
 		
 	}

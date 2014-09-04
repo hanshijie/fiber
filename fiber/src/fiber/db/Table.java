@@ -4,7 +4,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import fiber.common.Marshaller;
-import fiber.io.Log;
+import static fiber.io.Log.log;
 import fiber.io.MarshalException;
 import fiber.io.OctetsStream;
 
@@ -67,7 +67,7 @@ public abstract class Table {
 	public void remove(Object key) {
 		TValue value = this.map.remove(key);
 		if(value != null) {
-			Log.debug("Table:%d remove key:%s value:%s", this.getId(), key, value);
+			log.debug("Table:{} remove key:{} value:{}", this.getId(), key, value);
 			value.setShrink(true);
 		}
 	}

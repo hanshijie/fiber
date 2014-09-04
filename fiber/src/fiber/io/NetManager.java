@@ -1,10 +1,13 @@
 package fiber.io;
 
 import java.util.Map;
+
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+
+import static fiber.io.Log.log;
 
 public class NetManager extends IOManager {
 
@@ -28,7 +31,7 @@ public class NetManager extends IOManager {
 	}
 
 	synchronized public void broadcastMessage(Object msg) {
-		Log.debug("broadcast");
+		log.debug("broadcast");
 		for(IOSession s : this.getSessions().values()) {
 			s.send(msg);
 		}	
@@ -90,7 +93,7 @@ public class NetManager extends IOManager {
 					handleTimeout(fhandler, session, rpcbean.getArg());
 				}			
 			}, rpcbean.getTimeout());
-			Log.notice("sendRpc timeout");
+			log.error("sendRpc timeout");
 			return false;
 		}
 		rpcbean.setReqTime((int)(System.currentTimeMillis() / 1000));
@@ -105,7 +108,8 @@ public class NetManager extends IOManager {
 		try {
 			handler.timeout(session, arg);
 		} catch (Exception e) {
-			Log.alert("handlerTimeout. RpcHandler:%s arg:%s exception:%s", handler, arg, e);
+			log.error("handlerTimeout. RpcHandler:{} arg:{} exception:{}", handler, arg, e);
+			log.error("", e);
 		}	
 	}
 	
@@ -120,7 +124,8 @@ public class NetManager extends IOManager {
 		try {
 			handler.process(session, bean);
 		} catch (Exception e) {
-			Log.alert("onReceiveMessage. BeanHandler:%s bean:%s exception:%s", handler, bean, Log.etos(e));
+			log.error("onReceiveMessage. BeanHandler:{} bean:{} exception:{}", handler, bean, e);
+			log.error("", e);
 		}
 	}
 

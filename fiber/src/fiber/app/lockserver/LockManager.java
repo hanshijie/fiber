@@ -6,7 +6,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
 
-import fiber.io.Log;
+import static fiber.io.Log.log;
 import fiber.io.Timer;
 import fiber.io.Octets;
 import fiber.io.OctetsStream;
@@ -131,21 +131,21 @@ public final class LockManager {
 	
 	public static void addInstantAcquire(Value value) {
 		instantAcquires.add(value);
-		Log.debug("addInstantAcquire. value:%s size:%d", value, instantAcquires.size());
+		log.debug("addInstantAcquire. value:{} size:{}", value, instantAcquires.size());
 	}
 	
 	public static void addDeferAcquire(Value value) {
 		deferAcquires.add(value);
-		Log.debug("addDeferAcquire. value:%s size:%d", value, deferAcquires.size());
+		log.debug("addDeferAcquire. value:{} size:{}", value, deferAcquires.size());
 	}
 	
 	public static void processAcquires() {
 		// TODO just for test.
-		Log.debug("processAllAcquires======================");
+		log.debug("processAllAcquires======================");
 		long now = Timer.currentTimeMillis();
 		
 		{
-			Log.debug("processInstantAcquire==============");
+			log.debug("processInstantAcquire==============");
 			Deque<Value> acquires = instantAcquires;
 			instantAcquires = new LinkedList<Value>();
 			for(Value value : acquires) {
@@ -153,7 +153,7 @@ public final class LockManager {
 			}
 		}
 		{
-			Log.debug("ProcessDeferAcquire================");
+			log.debug("ProcessDeferAcquire================");
 			ArrayList<Value> acquires = deferAcquires;
 			deferAcquires = new ArrayList<Value>();
 			for(Value value : acquires) {
@@ -178,27 +178,27 @@ public final class LockManager {
 	
 	public static void lockall(OrderLockAcquire req) {
 		for(Octets key = req.getNextKey() ; key != null ; key = req.getNextKey()) {
-			Log.debug("lock:%s", key.dump());
+			log.debug("lock:{}", key.dump());
 			Value lock = lockMap.get(key);
 			if(lock != null) {
 				if(lock.acquire(req)) {
-					Log.debug("lock:%s. acquire succ.", key.dump());
+					log.debug("lock:{}. acquire succ.", key.dump());
 					req.setCurLock(lock);
 				} else {
-					Log.debug("lock:%s. acquiring.", key.dump());
+					log.debug("lock:{}. acquiring.", key.dump());
 					return;
 				}
 			} else {
 				lock = new Value(req.getGsid());
 				lockMap.put(key, lock);
 				req.setCurLock(lock);
-				Log.debug("lock:%s. create and acquire succ.", key.dump());
+				log.debug("lock:{}. create and acquire succ.", key.dump());
 			}
 		}
 		req.doneLock();
 		// TODO
 		// notify req.gs  has got all locks;
-		Log.notice("gs:%d get all locks.", req.getGsid());
+		log.info("gs:{} get all locks.", req.getGsid());
 	}
 	
 	static Octets makeKey(long key) {

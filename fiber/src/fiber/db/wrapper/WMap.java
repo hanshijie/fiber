@@ -8,7 +8,7 @@ import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 
 import fiber.db.Wrapper;
-import fiber.io.Log;
+import static fiber.io.Log.log;
 
 public class WMap<K, V> extends Wrapper<Map<K, V>> implements Map<K, V> {
 	public static <T, U> WMap<T, U> create(Map<T, U> w) {
@@ -176,11 +176,11 @@ public class WMap<K, V> extends Wrapper<Map<K, V>> implements Map<K, V> {
 		assert(w.keySet().size() == w.size());
 		assert(w.values().size() == w.size());
 		assert(map.size() == N);
-		Log.info("wrapper:%s", w);
-		Log.info("============>");
+		log.info("wrapper:{}", w);
+		log.info("============>");
 
 		
-		Log.info("############");
+		log.info("############");
 		
 	}
 	
@@ -233,11 +233,11 @@ public class WMap<K, V> extends Wrapper<Map<K, V>> implements Map<K, V> {
 		assert(w.keySet().size() == w.size());
 		assert(w.values().size() == w.size());
 		assert(map.size() == N);
-		Log.info("wrapper:%s", w);
-		Log.info("============>");
+		log.info("wrapper:{}", w);
+		log.info("============>");
 
 		
-		Log.info("############");
+		log.info("############");
 		
 	}
 	

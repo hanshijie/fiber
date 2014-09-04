@@ -1,6 +1,6 @@
 package fiber.test;
 
-import fiber.io.Log;
+import static fiber.io.Log.log;
 import fiber.prop.AllDatas;
 
 public final class TestProp {
@@ -10,7 +10,7 @@ public final class TestProp {
 		data.setBasePath("e:/");
 		try {
 			data.unmarshal();
-			Log.trace("%s", data);
+			log.trace("{}", data);
 		} catch(Exception e) {
 			e.printStackTrace();
 		}

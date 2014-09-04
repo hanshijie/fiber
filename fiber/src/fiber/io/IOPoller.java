@@ -1,11 +1,14 @@
 package fiber.io;
 
 import java.io.IOException;
+
 import java.nio.channels.*;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+
+import static fiber.io.Log.log;
 
 public final class IOPoller {
 	private final int id;
@@ -85,7 +88,7 @@ public final class IOPoller {
 		}
 
 		int ready_channel_num = this.selector.select(timeout);
-		Log.debug("%s ready channel num:%d", this, ready_channel_num);
+		log.debug("{} ready channel num:{}", this, ready_channel_num);
 		if(ready_channel_num == 0) return;
 		final Set<SelectionKey> keys = this.selector.selectedKeys();
 		for (SelectionKey key : keys) {
@@ -104,11 +107,11 @@ public final class IOPoller {
 						poll(0);
 					}
 				} catch(Exception e) {
-					Log.fatal("%s. runBackground exception:%s", this, e);
+					log.error("IOPoller.runBackground. exception.", e);
 				}
 			}
 		});
-		t.setDaemon(false);
+		t.setDaemon(true);
 		t.start();
 	}
 

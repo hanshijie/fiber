@@ -187,21 +187,22 @@ import fiber.common.TaskPool;
 */
 import fiber.bean.$(bean.name);
 import fiber.io.*;
+import static fiber.io.Log.log;
 
 public class $(bean.name)Handler extends BeanHandler<$(bean.name)> {
 	@Override
 	public void onProcess(final IOSession session, final $(bean.name) arg) {
-		Log.trace("$(bean.name)Handler.onProcess. sessionid:%d, arg:%s", session.getId(), arg);
+		log.trace("$(bean.name)Handler.onProcess. sessionid:{}, arg:{}", session.getId(), arg);
 		/*
 		TaskPool.execute(new Procedure() {
 			@Override
 			protected void execute() throws Exception {
-				log.trace("%s.execute. sessionid:%d, arg:%s", this, session.getId(), arg);
+				log.trace("{}.execute. sessionid:{}, arg:{}", this, session.getId(), arg);
 			}
 			
 			@Override
 			protected void onRetError(int retcode, Object content) {
-				log.err("%s.onRetError. retcode:%d content:%s", this, retcode, content);
+				log.err("{}.onRetError. retcode:{} content:{}", this, retcode, content);
 			}
 
 		});

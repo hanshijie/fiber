@@ -1,9 +1,12 @@
 package fiber.io;
 
 import java.nio.ByteBuffer;
+
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static fiber.io.Log.log;
 
 public final class IOSession {
 	public IOSession(IOTransportor handler) {
@@ -23,7 +26,7 @@ public final class IOSession {
 	
 	public void close() {
 		this.handler.close();
-		Log.info("[session-%d] close", this.getId());
+		log.info("[session-{}] close", this.getId());
 	}
 	
 	public void onClose() {

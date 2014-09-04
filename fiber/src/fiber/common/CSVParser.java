@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
 
-import fiber.io.Log;
+import static fiber.io.Log.log;
 
 public final class CSVParser {
 	public final static class ParserException extends RuntimeException {
@@ -27,7 +27,7 @@ public final class CSVParser {
 			this.msg = msg;
 		}
 		@Override
-		public String toString() { return String.format("file:%s line:%s pos:%s, err:%s", file, line, pos, msg); }
+		public String toString() { return String.format("file:{} line:{} pos:{}, err:{}", file, line, pos, msg); }
 	}
 	
 	private final static String DEFAULT_CHARSET = "GB2312";
@@ -69,7 +69,7 @@ public final class CSVParser {
 	}
 	
 	void error(String msg) {
-		error(this.line, this.pos, msg);
+		error(this.line, this.pos - 1, msg);
 	}
 	
 	void error(boolean succ, String msg) {
@@ -83,7 +83,7 @@ public final class CSVParser {
 	
 	public boolean readBoolean() {
 		int v = readInteger();
-		error(v == 0 || v == 1, String.format("<%s> is invalid bool", v));
+		error(v == 0 || v == 1, String.format("<{}> is invalid bool", v));
 		return v != 0;
 	}
 	
@@ -91,7 +91,7 @@ public final class CSVParser {
 		error(!isEnd(), "unmarshal fail");
 		String v = this.datas.get(this.line).get(this.pos++);
 		int intv = Integer.parseInt(v);
-		error(Integer.toString(intv).equals(v), String.format("<%s> is invalid int", v));
+		error(Integer.toString(intv).equals(v), String.format("<{}> is invalid int", v));
 		return intv;
 	}
 	
@@ -99,7 +99,7 @@ public final class CSVParser {
 		error(!isEnd(), "unmarshal fail");
 		String v = this.datas.get(this.line).get(this.pos++);
 		long longv = Long.parseLong(v);
-		error(Long.toString(longv).equals(v), String.format("<%s> is valid long", v));
+		error(Long.toString(longv).equals(v), String.format("<{}> is invalid long", v));
 		return longv;	
 	}
 	
@@ -140,13 +140,14 @@ public final class CSVParser {
 	}
 	
 	public void dump() {
-		Log.info("file:%s line:%s pos:%s", this.fileName, this.line, this.pos);
+		log.info("file:{} line:{} pos:{}", this.fileName, this.line, this.pos);
+		int linenum = 0;
 		for(ArrayList<String> line : this.datas) {
 			String s = "";
 			for(String field : line) {
 				s = s + "<" + field + ">";
 			}
-			Log.info("%s", s);
+			log.info("{}:{}", ++linenum, s);
 		}
 	}
 	

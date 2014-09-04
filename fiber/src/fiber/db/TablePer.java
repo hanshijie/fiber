@@ -4,7 +4,7 @@ import java.util.Map;
 
 import fiber.common.Marshaller;
 import fiber.io.Const;
-import fiber.io.Log;
+import static fiber.io.Log.log;
 import fiber.io.Octets;
 import fiber.io.OctetsStream;
 import fiber.io.Timer;
@@ -56,7 +56,7 @@ public class TablePer extends Table {
 					Object ovalue = unmarshalValue(OctetsStream.wrap(value));
 					return w.onProcess(TablePer.this, okey, new TValue(ovalue));
 				} catch(Exception e) {
-					Log.err("TablePer.walk. exception:%s", Log.etos(e));
+					log.error("TablePer.walk.", e);
 					return true;
 				}
 			}
