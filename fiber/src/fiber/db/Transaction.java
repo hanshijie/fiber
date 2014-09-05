@@ -322,6 +322,25 @@ public class Transaction {
 			lock.unlock();
 		}
 	}
+	
+	public static boolean getDirtyData(WKey key, TValue value) {
+		Lock lock = waitCommitReadLock;
+		lock.lock();
+		try{
+			WValue wvalue = waitCommitDataMap.get(key);
+			if(wvalue == null && inCommitDataMap != null) {
+				wvalue = inCommitDataMap.get(key);
+			}
+			if(wvalue != null) {
+				value.setValue(wvalue.getCurValue());
+				return true;
+			} else {
+				return false;
+			}
+		} finally {
+			lock.unlock();
+		}
+	}
 
 	protected void commitModifyData() {
 		Lock lock = waitCommitReadLock;

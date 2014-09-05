@@ -10,7 +10,7 @@ public final class TestProp {
 		data.setBasePath("e:/");
 		try {
 			data.unmarshal();
-			log.trace("{}", data);
+			log.info("{}", data);
 		} catch(Exception e) {
 			e.printStackTrace();
 		}

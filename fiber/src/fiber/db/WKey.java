@@ -33,7 +33,7 @@ public final class WKey {
 	}
 	
 	public final static int keyHashCode(int tableid, Object key) {
-		return tableid * 31 + key.hashCode();
+		return tableid * 0x9e3779b1 + key.hashCode();
 	}
 	
 	@Override

@@ -26,31 +26,6 @@ public class TableMem extends Table {
 	}
 
 	@Override
-	public void shrink() {
-		LockPool pool = LockPool.getInstance();
-		ShrinkPolicy policy = this.getPolicy();
-		int toRemoveNum = this.size() - this.remainSizeAfterShrink();
-		for(Map.Entry<Object, TValue> e : this.getDataMap().entrySet()) {
-			Object key = e.getKey();
-			TValue value = e.getValue();
-			if(policy.check(key, value)) {
-				int lockid = pool.lockid(WKey.keyHashCode(this.getId(), key));
-				pool.lock(lockid);
-				try {
-					// double check.
-					if(policy.check(key, value)) {
-						remove(key);
-						if(--toRemoveNum <= 0) break;
-					}	
-				} finally {
-					pool.unlock(lockid);
-				}
-			}
-		}
-		
-	}
-
-	@Override
 	public void walk(Walk w) {
 		for(Map.Entry<Object, TValue> e : this.getDataMap().entrySet()) {
 			if(!w.onProcess(this, e.getKey(), e.getValue())) break;

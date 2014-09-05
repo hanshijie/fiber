@@ -40,7 +40,7 @@ public abstract class Table {
 	public TValue get(Object key) throws Exception {
 		TValue value = map.get(key);
 		if(value == null) {
-			TValue newValue = new TValue(loadValue(key));
+			TValue newValue = loadValue(key);
 			value = map.putIfAbsent(key, newValue);
 			return value != null ? value : newValue;
 		} else {
@@ -51,7 +51,7 @@ public abstract class Table {
 	public Object putIfAbsent(Object key, TValue value) {	return map.putIfAbsent(key, value);	}
 	
 	public void onUpdate(Object key, TValue value) { }
-	protected Object loadValue(Object key) throws Exception { return null; }
+	protected TValue loadValue(Object key) throws Exception { return new TValue(null); }
 	
 	public static interface Walk {
 		abstract boolean onProcess(Table table, Object key, TValue value);
@@ -79,7 +79,29 @@ public abstract class Table {
 		 */
 		boolean check(Object key, TValue value); 
 	}
-	abstract public void shrink();
+	
+	public void shrink() {
+		LockPool pool = LockPool.getInstance();
+		ShrinkPolicy policy = this.getPolicy();
+		int toRemoveNum = this.size() - this.remainSizeAfterShrink();
+		for(Map.Entry<Object, TValue> e : this.getDataMap().entrySet()) {
+			Object key = e.getKey();
+			TValue value = e.getValue();
+			if(policy.check(key, value)) {
+				int lockid = pool.lockid(WKey.keyHashCode(this.getId(), key));
+				pool.lock(lockid);
+				try {
+					// double check.
+					if(policy.check(key, value)) {
+						remove(key);
+						if(--toRemoveNum <= 0) break;
+					}	
+				} finally {
+					pool.unlock(lockid);
+				}
+			}
+		}
+	}
 	
 	public final void marshalKey(OctetsStream os, Object key) {
 		this.msKey.marshal(os, key);

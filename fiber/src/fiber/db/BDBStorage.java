@@ -418,7 +418,9 @@ public final class BDBStorage extends Storage {
 		for(Integer tableid : tableDatasMap.keySet()) {
 			locks.put(tableid, false); // write lock.
 		}
+		long t1 = Timer.currentTimeMillis();
 		lockDBs(locks);
+		long t2 = Timer.currentTimeMillis();
 		Transaction txn = this.getTxn();
 		try {
 			for(Map.Entry<Integer, ArrayList<Pair>> e : tableDatasMap.entrySet()) {
@@ -436,6 +438,8 @@ public final class BDBStorage extends Storage {
 				}
 			}
 			txn.commit();
+			long t3 = Timer.currentTimeMillis();
+			log.info("BDBStorage.put lock cost time:{}, commit cost time:{}, total cost time:{}", (t2 - t1), (t3 - t2), (t3 - t1));
 			return true;
 		} catch (Exception e) {
 			log.error("BDBStorage.put >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");

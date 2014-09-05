@@ -7,14 +7,10 @@ handler { name="Server", path="server" }
 
 handler { name="Client", path="client" }
 
-handler { name="DBServer", path="dbserver" }
-
-handler { name="DBClient", path="dbclient", }
-
 local hsse = handlerset { "Server"}
 local hscl = handlerset { "Client"}
 local hssc = handlerset {"Server", "Client" }
-local hsdb = handlerset { "DBServer", "DBClient" }
+
 
 bean {
 	name="TestBean", type=2, maxsize="100", handlers = hssc,

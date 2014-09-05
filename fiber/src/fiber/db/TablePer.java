@@ -35,14 +35,17 @@ public class TablePer extends Table {
 	}
 
 	@Override
-	protected Object loadValue(Object key) throws Exception {
+	protected TValue loadValue(Object key) throws Exception {
+		TValue tvalue = new TValue();
+		if(Transaction.getDirtyData(new WKey(this, key), tvalue)) return tvalue;
 		OctetsStream os = OctetsStream.create(8);
 		this.marshalKey(os, key);
 		Octets ovalue = Storage.getInstance().get(this.getId(), os.toOctets());
-		if(ovalue == null) return null;
-		OctetsStream vos = OctetsStream.wrap(ovalue);
-		Object value = this.unmarshalValue(vos);
-		return value;
+		if(ovalue != null) {
+			OctetsStream vos = OctetsStream.wrap(ovalue);
+			tvalue.setValue(this.unmarshalValue(vos));
+		}
+		return tvalue;
 	}
 	
 	
@@ -62,30 +65,6 @@ public class TablePer extends Table {
 			}
 		});
 		
-	}
-
-	@Override
-	public void shrink() {
-		LockPool pool = LockPool.getInstance();
-		ShrinkPolicy policy = this.getPolicy();
-		int toRemoveNum = this.size() - this.remainSizeAfterShrink();
-		for(Map.Entry<Object, TValue> e : this.getDataMap().entrySet()) {
-			Object key = e.getKey();
-			TValue value = e.getValue();
-			// skip dirty datas.
-			if(policy.check(key, value)) {
-				int lockid = pool.lockid(WKey.keyHashCode(this.getId(), key));
-				pool.lock(lockid);
-				try {
-					if(policy.check(key, value) && !Transaction.isDirty(new WKey(this, key))) {
-						remove(key);
-						if(--toRemoveNum <= 0) break;
-					}	
-				} finally {
-					pool.unlock(lockid);
-				}
-			}
-		}
 	}
 
 	@Override
