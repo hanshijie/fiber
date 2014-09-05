@@ -11,9 +11,6 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import org.slf4j.Marker;
-import org.slf4j.MarkerFactory;
-
 import fiber.common.TaskPool;
 import fiber.io.Bean;
 import fiber.io.BeanCodec;
@@ -211,6 +208,14 @@ public class Transaction {
 		log.debug("{} end", this);
 	}
 	
+	public final void ret(int retcode) throws RetException {
+		RetException.trigger(retcode);
+	}
+	
+	public final void ret(int retcode, Object content) throws RetException {
+		RetException.trigger(retcode, content);
+	}
+	
 	@Override
 	public final String toString() {
 		return "[TXN:" + this.getTxnid() + "]";
@@ -278,19 +283,18 @@ public class Transaction {
 	private final static Lock waitCommitWriteLock = waitCommitRWLock.writeLock();
 	private static ConcurrentHashMap<WKey, WValue> waitCommitDataMap = new ConcurrentHashMap<WKey, WValue>();
 	private static ConcurrentHashMap<WKey, WValue> inCommitDataMap = null;
-	private static final Marker COMMIT = MarkerFactory.getMarker("COMMIT");
 
 	public static Map<WKey, WValue> getWaitCommitDataMap() {
 		Lock lock = waitCommitWriteLock;
 		lock.lock();
 		try{
 			if(inCommitDataMap != null) {
-				log.warn(COMMIT, "inCommitDataMap not commit succ? retry.");
+				log.warn("Transaction.commit inCommitDataMap not commit succ? retry.");
 				return inCommitDataMap;
 			}
 			inCommitDataMap = waitCommitDataMap;
 			waitCommitDataMap = new ConcurrentHashMap<WKey, WValue>();
-			log.info(COMMIT, "new inCommitDataMap. size:{}", inCommitDataMap.size());
+			log.info("Transaction.commit new inCommitDataMap. size:{}", inCommitDataMap.size());
 			return inCommitDataMap;
 		} finally {
 			lock.unlock();
@@ -303,7 +307,7 @@ public class Transaction {
 		lock.lock();
 		try {
 			inCommitDataMap = null;
-			log.info(COMMIT, "done finish.");
+			log.info("Transaction.commit done finish.");
 		} finally {
 			lock.unlock();
 		}

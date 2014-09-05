@@ -8,11 +8,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.Marker;
-import org.slf4j.MarkerFactory;
-
 import fiber.common.Marshaller;
 import fiber.io.Bean;
 import fiber.io.Const;
@@ -20,12 +15,10 @@ import fiber.io.MarshalException;
 import fiber.io.Octets;
 import fiber.io.OctetsStream;
 import fiber.io.Timer;
+import static fiber.io.Log.log;
 
 public class Enviroment {
-	private final static Logger log = LoggerFactory.getLogger(Enviroment.class);
-	
-	
-	private final static int MAX_TABLE_ID = 0x100;
+	private final static int MAX_TABLE_ID = 0x1000;
 	private final static ArrayList<Table> tables = new ArrayList<Table>(MAX_TABLE_ID);
 	private final static Map<Integer, Table> tableMap = new HashMap<Integer, Table>();
 	static {
@@ -36,8 +29,8 @@ public class Enviroment {
 	
 	public static void register(Table table) {
 		Integer id = table.getId();
-		if(id <= 0 || id >= MAX_TABLE_ID) throw new IllegalArgumentException(String.format("Table id<{}> is invalid!", id));
-		if(tables.get(id) != null) throw new IllegalArgumentException(String.format("Table<{}> exists!", id));
+		if(id <= 0 || id >= MAX_TABLE_ID) throw new IllegalArgumentException(String.format("Table id<%s> is invalid!", id));
+		if(tables.get(id) != null) throw new IllegalArgumentException(String.format("Table id<%s> exists!", id));
 		tables.set(id, table);
 		tableMap.put(id, table);
 	}
@@ -45,16 +38,16 @@ public class Enviroment {
 	private final static Object flushLock = new Object();
 	private final static OctetsStream kos = OctetsStream.create(64);
 	private final static OctetsStream vos = OctetsStream.create(1024 * 1024);
-	private final static Marker FLUSH = MarkerFactory.getMarker("ENV FLUSH");
 	
 	public static void flush() {
 		synchronized(flushLock) {
 			final Storage storage = Storage.getInstance();
 			if(storage == null) {
-				log.warn(FLUSH, "storage hasn't been initiated. omit");
+				log.warn("Environment.flush storage hasn't been initiated. omit");
 				return;
 			}
-			log.info(FLUSH, "======> begin");
+			long t1 = Timer.currentTimeMillis();
+			log.info("Environment.flush ======> begin");
 			Map<WKey, WValue> data = Transaction.getWaitCommitDataMap();
 			TreeMap<Integer, ArrayList<Pair>> tableDatasMap = new TreeMap<Integer, ArrayList<Pair>>();
 			for(Map.Entry<WKey, WValue> e : data.entrySet()) {
@@ -78,24 +71,24 @@ public class Enviroment {
 			if(storage.put(tableDatasMap)) {		
 				Transaction.doneCommit();
 			} else {
-				log.error(FLUSH, "storage.put fail. data num:{}", data.size());
+				log.error("Environment.flush storage.put fail. data num:{}", data.size());
 			}
-			log.info(FLUSH, "======> end");
+			long t2 = Timer.currentTimeMillis();
+			log.info("Environment.flush ======> end. data num:{} cost time:{}", data.size(), t2 - t1);
 		}
 	}
 	
-	private static final Marker SHRINK = MarkerFactory.getMarker("SHRINK");
 	public static void shrink() {
 		long t1 = Timer.currentTimeMillis();
 		for(Table table : tableMap.values()) {
 			if(table.overmaxsize()) {
-				log.info(SHRINK, "table:<{}> size:{} maxsize:{}. begin.", table.getId(), table.size(), table.maxsize());
+				log.info("Environment.shrink table:<{}> size:{} maxsize:{}. begin.", table.getId(), table.size(), table.maxsize());
 				table.shrink();
-				log.info(SHRINK, "table:<{}> size:{} maxsize:{}. end.", table.getId(), table.size(), table.maxsize());
+				log.info("Environment.shrink table:<{}> size:{} maxsize:{}. end.", table.getId(), table.size(), table.maxsize());
 			}
 		}
 		long t2 = Timer.currentTimeMillis();
-		log.info(SHRINK, "all done! cost time:{}", t2 - t1);
+		log.info("Environment.shrink all done! cost time:{}", t2 - t1);
 	}
 	
 	private static final ScheduledExecutorService scheduleExecutor = Executors.newSingleThreadScheduledExecutor();

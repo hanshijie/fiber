@@ -4,7 +4,6 @@ import fiber.bean.SessionInfo;
 import fiber.bean.UserLogin;
 import fiber.bean.UserLoginRe;
 import fiber.bean._.WrapperSessionInfo;
-import fiber.db.RetException;
 import fiber.db.Transaction;
 import fiber.db.Transaction.Dispatcher;
 import static fiber.io.Log.log;
@@ -21,7 +20,7 @@ public class Login {
 		log.trace("UserLogin uid:{} sid:{}", arg.getuid(), sid);
 		WrapperSessionInfo w = DB.getSession(sid);
 		UserLoginRe re = new UserLoginRe();
-		if(!w.isNULL() || sid % 2 == 0) RetException.trigger(sid);
+		if(!w.isNULL() || sid % 2 == 0) txn.ret(sid);
 		w.assign(new SessionInfo());
 		w.setuid(arg.getuid());
 		int logintime = Timer.currentTime();

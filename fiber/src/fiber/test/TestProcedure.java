@@ -40,7 +40,7 @@ public class TestProcedure {
 				log.warn("6:{}", this);
 				log.error("7:{}", this);
 				log.error("9:", new Exception("xxxx"));
-				trigger(1218);
+				this.txn.ret(1218);
 			}
 
 			@Override
@@ -52,6 +52,7 @@ public class TestProcedure {
 		
 		p.run();
 		Thread.sleep(1000);
+
 		p = new Procedure() {
 
 			@Override

@@ -27,7 +27,7 @@ public final class CSVParser {
 			this.msg = msg;
 		}
 		@Override
-		public String toString() { return String.format("file:{} line:{} pos:{}, err:{}", file, line, pos, msg); }
+		public String toString() { return String.format("file:%s line:%s pos:%s, err:%s", file, line, pos, msg); }
 	}
 	
 	private final static String DEFAULT_CHARSET = "GB2312";
@@ -83,7 +83,7 @@ public final class CSVParser {
 	
 	public boolean readBoolean() {
 		int v = readInteger();
-		error(v == 0 || v == 1, String.format("<{}> is invalid bool", v));
+		error(v == 0 || v == 1, String.format("<%s> is invalid bool", v));
 		return v != 0;
 	}
 	
@@ -91,7 +91,7 @@ public final class CSVParser {
 		error(!isEnd(), "unmarshal fail");
 		String v = this.datas.get(this.line).get(this.pos++);
 		int intv = Integer.parseInt(v);
-		error(Integer.toString(intv).equals(v), String.format("<{}> is invalid int", v));
+		error(Integer.toString(intv).equals(v), String.format("<%s> is invalid int", v));
 		return intv;
 	}
 	
@@ -99,7 +99,7 @@ public final class CSVParser {
 		error(!isEnd(), "unmarshal fail");
 		String v = this.datas.get(this.line).get(this.pos++);
 		long longv = Long.parseLong(v);
-		error(Long.toString(longv).equals(v), String.format("<{}> is invalid long", v));
+		error(Long.toString(longv).equals(v), String.format("<%s> is invalid long", v));
 		return longv;	
 	}
 	

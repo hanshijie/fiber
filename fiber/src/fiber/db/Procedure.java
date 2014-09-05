@@ -1,8 +1,5 @@
 package fiber.db;
 
-import org.slf4j.Marker;
-import org.slf4j.MarkerFactory;
-
 import fiber.db.Transaction.Dispatcher;
 import static fiber.io.Log.log;
 
@@ -29,10 +26,8 @@ public abstract class Procedure implements Runnable {
 		this.txn.commit();
 	}
 
-	private final static Marker PROCEDURE = MarkerFactory.getMarker("PROCEDURE"); 
 	protected final void end() {
 		this.txn.end();
-		log.debug(PROCEDURE, "{} end.", this.txn);
 	}
 	
 	protected Transaction txn;
@@ -69,22 +64,15 @@ public abstract class Procedure implements Runnable {
 		}
 	}
 	
-	protected final void trigger(int retcode) throws RetException {
-		RetException.trigger(retcode);
-	}
-	
-	protected final void trigger(int retcode, Object content) throws RetException {
-		RetException.trigger(retcode, content);
-	}
-	
 	abstract protected void execute() throws Exception;
 	abstract protected void onRetError(int retcode, Object content);
 	
 	protected void onException(Exception e) {
-		log.error(PROCEDURE, "{} onException. {}", this.txn, e);
-		log.error(PROCEDURE, "", e);
+		log.error("{} {}", this.txn, this);
+		log.error("", e);
 	}
+	
 	protected void onFail() {
-		log.error(PROCEDURE, "{} {}.onFail.", this.txn, this);
+		log.error("{} {}.onFail.", this.txn, this);
 	}
 }

@@ -4,14 +4,10 @@ import java.util.Collection;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.slf4j.Marker;
-import org.slf4j.MarkerFactory;
-
 import fiber.io.Const;
 import static fiber.io.Log.log;
 
 public final class LockPool {
-	private final static Marker LOCK = MarkerFactory.getMarker("LOCK");
 	private static final LockPool instance = new LockPool(Const.getProperty("lock_pool_size", 1024 * 8));
 	public static LockPool getInstance() { return instance; }
 	
@@ -25,7 +21,7 @@ public final class LockPool {
 		for(int i = 0 ; i < locksize ; i++) {
 			locks[i] = new ReentrantLock();
 		}
-		log.info(LOCK, "init. locksize:{} mask:{}", locksize, mask);
+		log.info("LookPool.init locksize:{} mask:{}", locksize, mask);
 	}
 	
 	public int lockid(int hash) {
@@ -34,7 +30,7 @@ public final class LockPool {
 	
 	
 	public void lock(int lockid) {
-		log.debug(LOCK, "lock:{}", lockid);
+		log.debug("LockPool.lock lock:{}", lockid);
 		this.locks[lockid].lock();
 	}
 	
@@ -45,7 +41,7 @@ public final class LockPool {
 	}
 	
 	public void unlock(int lockid) {
-		log.debug(LOCK, "unlock:{}", lockid);
+		log.debug("LockPool.unlock lock:{}", lockid);
 		this.locks[lockid].unlock();
 	}
 	
