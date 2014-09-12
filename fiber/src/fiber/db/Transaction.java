@@ -198,8 +198,18 @@ public class Transaction {
 	
 	public void rollback() {
 		this.clearDatas();
+		this.unlock();
 		log.info("{} rollback", this);
 		this.txnid = TXN_ID.incrementAndGet();
+	}
+	
+	/*
+	 * 与rollback的区别为 是否保持上次事务执行过程中使用的锁
+	 */
+	public void rollbackHoldLocks() {
+		this.clearDatas();
+		log.info("{} rollbackHoldLocks", this);
+		this.txnid = TXN_ID.incrementAndGet();		
 	}
 	
 	public void end() {
